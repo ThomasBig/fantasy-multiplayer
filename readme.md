@@ -14,7 +14,7 @@ Tomáš Janoušek
 * players choose **ancestry** (elf, dwarf, human) and their **name**
 * **dynamic time**: morning, afternoon, evening, night
 * **weather**: it rains at random intervals
-* players choose to write message to all players or a single player
+* players can choose to write message to all players or a single player
 
 ---
 <!-- class: invert -->
@@ -30,12 +30,12 @@ Tomáš Janoušek
 <!-- class: default -->
 
 # Programs
-* Visual Studio 2020 C++ compiler: to compile C++20 code
-* Git: to download ASIO library and versioning
-* VS Code to write code
-  * C/C++ Extension: IntelliSense, Debugging
-  * CMake Extension: Syntax for CMake files
-  * CMake Tools Extension: Sleek buttons
+* **Visual Studio 2020 C++ compiler**: to compile C++20 code
+* **Git**: to download ASIO library and versioning
+* **VS Code**: to write code
+  * **C/C++ Extension**: IntelliSense, Debugging
+  * **CMake Extension**: Syntax for CMake files
+  * **CMake Tools Extension**: Sleek buttons
 
 ---
 
