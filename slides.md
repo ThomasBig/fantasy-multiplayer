@@ -155,7 +155,7 @@ asio::awaitable<void> connect(tcp::socket& socket,
     co_return;
   }
 
-  std::cout << "Connected.";
+  std::cout << "Connected to " << socket.remote_endpoint() << ".\n";
 }
 ```
 
@@ -202,11 +202,13 @@ asio::awaitable<void> listener() {
   std::cout << "Staring a server on port 8080...";
   asio::ip::tcp::acceptor acceptor(executor, {tcp::v4(), 8080});
   auto [ec, socket] = co_await acceptor.async_accept(asio::as_tuple);
-  if (ec) {
-    std::cout << "Could not accept a new connection: " << ec.message() << "\n";
-    co_return;
+  while (true) {
+    if (ec) {
+      std::cout << "Could not accept a new connection: " << ec.message() << "\n";
+      co_return;
+    }
+    std::cout << "There is a new connection from "<< socket.remote_endpoint() << "!\n";
   }
-  std::cout << "There is a new connection!";
 }
 ```
 
