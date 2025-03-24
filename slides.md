@@ -14,27 +14,29 @@ class: invert
 * We will learn how to make a simple multiplayer game without losing our mind
 * We will use C++20 coroutines and ASIO library for basic networking objects
 * We will NOT make production ready code
-* We will obtain an DEEPER UNDERSTANDING of networking code
+* We will MAKE a functional and understandable PROTOTYPE
 
 ---
 
 # Speaker
 * Tomáš Janoušek
-* Grew on: WoW, Counter-Strike, Overwatch, Minecraft
+* Grew up on: WoW, Counter-Strike, Overwatch, Minecraft
 * Wrote a master's thesis on networking
 * Worked on: Top-Spin 2K25, Mafia: The Old Country, ArmA Games
 
 ---
 
-# Tools
-* VS Code
-* C++20 (coroutines)
+# Recommended Tools
+* VS Code (C++, CMake and CMake Tools Extensions)
+* C++20 (Coroutines)
 * CMake
 * Git
 
 ---
 
 # Hello, server!
+*First we will show an example, how to connect to a server with asio library
+without using coroutines*
 
 ---
 
@@ -87,8 +89,12 @@ state in some state machine
 * Thankfully, we can use a better way, a coroutine
 
 ---
-
 # Coroutines
+*Now we are aware of downsides of callbacks, so let's explore a newer approach.*
+
+---
+
+# Coroutines: What are they?
 * Better functions™
 * They run and return a value, however, they can be paused (suspended) to wait
 for time consuming operations and main thread can do things in the meantime (i.e, draw graphics, handle players input, etc.)
@@ -117,6 +123,12 @@ int main() {
     return 0;
 }
 ```
+---
+
+# Client-Server Connection
+*Now we will make a functional example in which we will connect a client to
+server. Server will wait for any number of connections.*
+
 ---
 
 # Client Connection 1/2
@@ -231,4 +243,46 @@ int main(int argc, char* argv[]) {
   return 0;
 }
 ```
+---
+
+# Test, test, test!
+*Before making the fully-fledged game, we need to make sure our basic
+functionality is working as intended. We will try that we can connect notebook
+to PC. PC will use fixed and wired internet, notebook willuse internet from a mobile hotspot. They use internet from different ISP companies, that is
+Vodafone hotspot and O2 wired connection.*
+
+---
+
+# Private IP! Firewall!
+*Ohno, we can't easily connect one computer to another as there are various
+protections preventing us to connecting to computers together. ISP often sell
+private IP addresses with low price with optional plans of higher price for
+public IP.*
+
+---
+
+# How to circumfluent IP, firewall and other protections
+* Cloud server (AWS, Azure, Google Cloud): 100s€/month
+* Public IP from ISP & Custom Server: 10€/month + Server Cost
+* Virtual Private Network (Hamachi, Zero Tier, RadminVPN): various free plans
+
+---
+
+# Wait, does it actually work?
+*You are telling me I spent 1000$ for Microsoft Azure when I could have it all
+for free?*
+
+
+---
+
+# Virtual Private Network
+* All users need to download the same program.
+* One player sets up a new private network.
+* Other players then connect to that network.
+* Then, all can communicate freely as they are on the same network, meaning one player can run the server and others join it.
+
+---
+
+# ZeroTier
+
 ---
