@@ -22,7 +22,7 @@ class: invert
 * Tomáš Janoušek
 * Grew up on: WoW, Counter-Strike, Overwatch, Minecraft
 * Wrote a master's thesis on networking
-* Worked on: Top-Spin 2K25, Mafia: The Old Country, ArmA Games
+* Worked on: TopSpin 2K25, Mafia: The Old Country, ArmA Games
 
 ---
 
@@ -103,6 +103,15 @@ for time consuming operations and main thread can do things in the meantime (i.e
 
 ---
 
+# ASIO Coroutines
+* Created using `asio::co_spawn(executor, fn, handler)`
+* Suspended using `co_await`
+* `asio::awaitable<Type>` return type in coroutine signature
+* Values returned using `co_return`
+
+---
+
+
 # Hello world!
 ```c++
 #include <iostream>
@@ -123,6 +132,14 @@ int main() {
     return 0;
 }
 ```
+
+---
+# Coroutines Tips
+* Use `asio::use_tuple` over `asio::use_awaitable`
+* Use shared pointers over references, raw pointers
+* Use custom completion handler to handle errors
+* See 'Making Online Multiplayer Games in C++' for more info
+
 ---
 
 # Client-Server Connection
@@ -212,7 +229,7 @@ int main(int argc, char* argv[]) {
 asio::awaitable<void> listener() {
   auto executor = co_await asio::this_coro::executor;
   std::cout << "Staring a server on port 8080...";
-  asio::ip::tcp::acceptor acceptor(executor, {tcp::v4(), 8080});
+  tcp::acceptor acceptor(executor, {tcp::v4(), 8080});
   auto [ec, socket] = co_await acceptor.async_accept(asio::as_tuple);
   while (true) {
     if (ec) {
@@ -230,7 +247,7 @@ asio::awaitable<void> listener() {
 ```C++
 asio::awaitable<void> listener(asio::ip::port_type port) {
   //...
-  asio::ip::tcp::acceptor acceptor(executor, {tcp::v4(), port});
+  tcp::acceptor acceptor(executor, {tcp::v4(), port});
   //...
 }
 
@@ -253,11 +270,11 @@ Vodafone hotspot and O2 wired connection.*
 
 ---
 
-# Private IP! Firewall!
-*Ohno, we can't easily connect one computer to another as there are various
-protections preventing us to connecting to computers together. ISP often sell
-private IP addresses with low price with optional plans of higher price for
-public IP.*
+# Common reason why server does not connect
+* ISP (private IP)
+* Firewall
+* Router (port forwarding)
+* Antivirus (firewall)
 
 ---
 
@@ -265,13 +282,6 @@ public IP.*
 * Cloud server (AWS, Azure, Google Cloud): 100s€/month
 * Public IP from ISP & Custom Server: 10€/month + Server Cost
 * Virtual Private Network (Hamachi, Zero Tier, RadminVPN): various free plans
-
----
-
-# Wait, does it actually work?
-*You are telling me I spent 1000$ for Microsoft Azure when I could have it all
-for free?*
-
 
 ---
 
@@ -283,6 +293,23 @@ for free?*
 
 ---
 
-# ZeroTier
+# Testing
+* Single machine (localhost)
+* Two PCs next to each other but on different networks (whatismyip)
+* Playing with friends (multiple PCs far away)
 
 ---
+
+# Recap
+*So far...*
+
+---
+# Recap
+* C++20 and ASIO
+* Coroutines over callbacks
+* Client -> server connection
+* Tested over the real internet
+
+---
+
+# Server to client
