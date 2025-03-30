@@ -1,10 +1,56 @@
 #include <iostream>
 #include <asio.hpp>
+#include <memory>
+#include <map>
+#include <asio/experimental/awaitable_operators.hpp>
+using namespace asio::experimental::awaitable_operators;
+
+#include "shared.hpp"
 using asio::ip::tcp;
 
-asio::awaitable<void> communicate(tcp::socket socket) {
+Players players;
+int last_id = 0;
+std::unordered_map<int, tcp::socket> sockets;
+
+asio::awaitable<void> writer(int player_id) {
+  while (socket != nullptr) {
+    std::string serialized = players.serialize();
+    auto [ec, _count] = co_await sockets.at(player_id).async_send(asio::buffer(serialized.data(), serialized.length()), asio::as_tuple);
+    if (ec) {
+      std::cout << "Could not send: " << ec.message() << "\n";
+      players.data.erase(player_id);
+      co_return;
+    }
+    std::cout << "Wrote to player " << player_id << ": " << serialized << "\n";
+    asio::steady_timer timer(co_await asio::this_coro::executor, asio::chrono::seconds(1));
+    co_await timer.async_wait(asio::use_awaitable);
+  }
+}
+
+asio::awaitable<void> reader(int player_id) {
+  char data[1024];
+  while (true) {
+    auto [ec, _count] = co_await sockets.at(player_id).async_receive(asio::buffer(data, 1024), asio::as_tuple);
+    if (ec) {
+      std::cout << "Cannot receive from player " << player_id << ": " << ec.message() << "\n";
+      players.data.erase(player_id);
+      co_return;
+    }
+    std::cout << "Read from player " << player_id << ": " << data << "\n";
+    players.data[player_id].update(data);
+  }
+}
+
+asio::awaitable<void> connect(tcp::socket socket) {
   std::cout << "There is a new connection from "<< socket.remote_endpoint() << "!\n";
-  co_return;
+
+  int player_id = last_id++;
+  players.data[player_id] = Player();
+  sockets.emplace(player_id, std::move(socket));
+
+  co_await (
+    writer(player_id) || reader(player_id)
+  );
 }
 
 asio::awaitable<void> listener(asio::ip::port_type port) {
@@ -17,7 +63,7 @@ asio::awaitable<void> listener(asio::ip::port_type port) {
       std::cout << "Could not accept a new connection: " << ec.message() << "\n";
       co_return;
     }
-    asio::co_spawn(executor, communicate(std::move(socket)), asio::detached);
+    asio::co_spawn(executor, connect(std::move(socket)), asio::detached);
   }
 }
 

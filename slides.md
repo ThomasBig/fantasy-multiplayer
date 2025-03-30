@@ -142,7 +142,7 @@ int main() {
 
 ---
 
-# Client-Server Connection
+# Client->Server Connection
 *Now we will make a functional example in which we will connect a client to
 server. Server will wait for any number of connections.*
 

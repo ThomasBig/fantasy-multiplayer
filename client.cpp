@@ -3,24 +3,58 @@
 #include <SDL3/SDL_main.h>
 #include <iostream>
 #include <asio.hpp>
+#include "shared.hpp"
 using asio::ip::tcp;
 
 SDL_Window *window = NULL;
 SDL_Renderer *renderer = NULL;
 asio::io_context context;
+tcp::socket client_socket(context);
+Uint64 last_update = 0;
+Uint64 current_update = 0;
+Uint64 delta_update;
+int dir_x = 0;
+int dir_y = 0;
 
 constexpr int WINDOW_WIDTH = 960;
 constexpr int WINDOW_HEIGHT = 540;
 
-asio::awaitable<void> connect(tcp::socket socket,
-    const tcp::resolver::results_type endpoints) {
+Players players;
+Player player;
+
+asio::awaitable<void> writer() {
+  while (true) {
+    std::string serialized = player.serialize();
+    auto [ec, _count] = co_await client_socket.async_send(asio::buffer(serialized.data(), serialized.length()), asio::as_tuple);
+    if (ec) {
+      // std::cout << "Could not send the message: " << ec.message() << "\n";
+      co_return;
+    }
+    // std::cout << "Wrote to server " << serialized << "\n";
+    asio::steady_timer timer(context, asio::chrono::seconds(1));
+    co_await timer.async_wait(asio::use_awaitable);
+  }
+}
+
+asio::awaitable<void> reader() {
+  char data[1024];
+  while (true) {
+    auto [ec, message] = co_await client_socket.async_receive(asio::buffer(data, 1024), asio::as_tuple);
+    // std::cout << "Read from server " << data<< "\n";
+    players.update(data);
+  }
+}
+
+asio::awaitable<void> connect(const tcp::resolver::results_type endpoints) {
   auto [error_code, endpoint] = co_await asio::async_connect(
-    socket, endpoints, asio::as_tuple);
+    client_socket, endpoints, asio::as_tuple);
   if (error_code) {
     std::cout << "Could not connect: " << error_code.message() << "\n";
     co_return;
   }
-  std::cout << "Connected to " << socket.remote_endpoint() << ".\n";
+  // std::cout << "Connected to " << client_socket.remote_endpoint() << ".\n";
+  co_spawn(context, writer(), asio::detached);
+  co_spawn(context, reader(), asio::detached);
 }
 
 SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[]) {
@@ -42,10 +76,9 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[]) {
     return SDL_APP_FAILURE;
   }
 
-  tcp::socket socket(context);
   tcp::resolver resolver(context);
   auto endpoints = resolver.resolve(argv[1], argv[2]);
-  asio::co_spawn(context, connect(std::move(socket), std::move(endpoints)), asio::detached);
+  asio::co_spawn(context, connect(std::move(endpoints)), asio::detached);
 
   return SDL_APP_CONTINUE;
 }
@@ -54,29 +87,56 @@ SDL_AppResult SDL_AppEvent(void *appstate, SDL_Event *event) {
   if (event->type == SDL_EVENT_QUIT) {
     return SDL_APP_SUCCESS;
   }
+  dir_x = 0;
+  dir_y = 0;
+  if (event->type == SDL_EVENT_KEY_DOWN) {
+    switch (event->key.scancode) {
+      case SDL_SCANCODE_W:
+        dir_y = -1;
+        break;
+      case SDL_SCANCODE_A:
+        dir_x = -1;
+        break;
+      case SDL_SCANCODE_S:
+        dir_y = 1;
+        break;
+      case SDL_SCANCODE_D:
+        dir_x = 1;
+        break;
+    }
+  }
   return SDL_APP_CONTINUE;
 }
 
 void render() {
-  const Uint64 now = SDL_GetTicks();
-
   SDL_SetRenderDrawColor(renderer, 0, 0, 0, SDL_ALPHA_OPAQUE);
   SDL_RenderClear(renderer);
 
-  std::vector<SDL_FRect> players;
-  players.emplace_back(100.0f+sinf(float(now)/1000.0f)*100.0f, 200.0f, 32.0f, 32.0f);
-  players.emplace_back(500.0f+sinf(float(now)/1000.0f)*100.0f, 400.0f, 32.0f, 32.0f);
-  players.emplace_back(300.0f+sinf(float(now)/1000.0f)*100.0f, 100.0f, 32.0f, 32.0f);
+  std::vector<SDL_FRect> rects;
+  for (const auto& [id, player] : players.data) {
+    rects.emplace_back(player.current_x, player.current_y, 32.0f, 32.0f);
+  }
 
   SDL_SetRenderDrawColor(renderer, 0, 0, 255, SDL_ALPHA_OPAQUE);
-  SDL_RenderFillRects(renderer, players.data(), players.size());
+  SDL_RenderFillRects(renderer, rects.data(), rects.size());
+
+  SDL_FRect player_rect{player.current_x, player.current_y, 32.0f, 32.0f};
+  SDL_SetRenderDrawColor(renderer, 255, 255, 0, SDL_ALPHA_OPAQUE);
+  SDL_RenderRect(renderer, &player_rect);
 
   SDL_RenderPresent(renderer);
 }
 
 SDL_AppResult SDL_AppIterate(void *appstate) {
+  current_update = SDL_GetTicks();
+  delta_update = current_update - last_update;
+
+  player.current_x += delta_update * Player::speed * dir_x;
+  player.current_y += delta_update * Player::speed * dir_y;
+
   render();
   context.poll();
+  last_update = current_update;
   return SDL_APP_CONTINUE;
 }
 
