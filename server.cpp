@@ -30,14 +30,13 @@ asio::awaitable<void> writer(int player_id) {
 asio::awaitable<void> reader(int player_id) {
   char data[1024];
   while (true) {
-    auto [ec, _count] = co_await sockets.at(player_id).async_receive(asio::buffer(data, 1024), asio::as_tuple);
+    auto [ec, len] = co_await sockets.at(player_id).async_receive(asio::buffer(data, 1024), asio::as_tuple);
     if (ec) {
       std::cout << "Cannot receive from player " << player_id << ": " << ec.message() << "\n";
       players.data.erase(player_id);
       co_return;
     }
-    std::cout << "Read from player " << player_id << ": " << data << "\n";
-    players.data[player_id].update(data);
+    players.data[player_id].update(std::string(data, len));
   }
 }
 

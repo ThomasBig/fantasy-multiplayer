@@ -39,9 +39,8 @@ asio::awaitable<void> writer() {
 asio::awaitable<void> reader() {
   char data[1024];
   while (true) {
-    auto [ec, message] = co_await client_socket.async_receive(asio::buffer(data, 1024), asio::as_tuple);
-    // std::cout << "Read from server " << data<< "\n";
-    players.update(data);
+    auto [ec, len] = co_await client_socket.async_receive(asio::buffer(data, 1024), asio::as_tuple);
+    players.update(std::string(data, len));
   }
 }
 
