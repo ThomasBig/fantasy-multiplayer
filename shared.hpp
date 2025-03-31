@@ -4,10 +4,10 @@
 
 struct Player {
   static constexpr float speed = 0.1f;
-  float target_x = 480.0f;
-  float target_y = 270.0f;
-  float current_x = 480.0f;
-  float current_y = 270.0f;
+  float target_x = 240.0f;
+  float target_y = 135.0f;
+  float current_x = 240.0f;
+  float current_y = 135.0f;
 
   std::string serialize() const {
     std::stringstream serialized;

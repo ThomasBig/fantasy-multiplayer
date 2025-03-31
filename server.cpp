@@ -72,7 +72,6 @@ asio::awaitable<void> game_loop()
   while (true) {
     for (auto& [id, player] : players.data) {
       player.update(delta_ms);
-      std::cout << id << " is on " << player.current_x << " " << player.current_y << " and targets " << player.target_x << " " << player.target_y << "\n";
     }
     asio::steady_timer timer(co_await asio::this_coro::executor, asio::chrono::milliseconds(delta_ms));
     co_await timer.async_wait(asio::use_awaitable);

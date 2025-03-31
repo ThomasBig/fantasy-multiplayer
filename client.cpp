@@ -21,10 +21,39 @@ int dir_y = 0;
 bool should_exit = false;
 
 constexpr int WINDOW_WIDTH = 960;
-constexpr int WINDOW_HEIGHT = 540;
+constexpr int WINDOW_HEIGHT = 736;
 
 Players players;
 Player player;
+
+SDL_Texture *map_texture = nullptr;
+SDL_Texture *char_textures[6];
+
+SDL_AppResult load_texture(SDL_Texture** texture, const char* filename){
+  SDL_Surface *surface = NULL;
+  char *png_path = NULL;
+  /* SDL_Surface is pixel data the CPU can access. SDL_Texture is pixel data the GPU can access.
+  Load a .bmp into a surface, move it to a texture from there. */
+
+  SDL_asprintf(&png_path, "%s/sprites/%s.bmp", SDL_GetBasePath(), filename);  /* allocate a string of the full file path */
+  surface = SDL_LoadBMP(png_path);
+  if (!surface) {
+    SDL_Log("Couldn't load image: %s", SDL_GetError());
+     return SDL_APP_FAILURE;
+  }
+
+  SDL_free(png_path);  /* done with this, the file is loaded. */
+
+  *texture = SDL_CreateTextureFromSurface(renderer, surface);
+  if (!texture) {
+    SDL_Log("Couldn't create static texture: %s", SDL_GetError());
+    return SDL_APP_FAILURE;
+  }
+  SDL_SetTextureScaleMode(*texture, SDL_SCALEMODE_NEAREST);
+
+  SDL_DestroySurface(surface);  /* done with this, the texture has a copy of the pixels now. */
+  return SDL_APP_CONTINUE;
+}
 
 asio::awaitable<void> writer() {
   while (true) {
@@ -79,6 +108,17 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[]) {
     return SDL_APP_FAILURE;
   }
 
+  if (SDL_AppResult loaded = load_texture(&map_texture, "map"); loaded != SDL_APP_CONTINUE) {
+    return loaded;
+  }
+
+  for (int i = 1; i <= 6; i++) {
+    std::string filename = std::string("char")+std::to_string(i);
+    if (SDL_AppResult loaded = load_texture(&char_textures[i-1], filename.c_str()); loaded != SDL_APP_CONTINUE) {
+      return loaded;
+    }
+  }
+
   tcp::resolver resolver(context);
   auto endpoints = resolver.resolve(argv[1], argv[2]);
   asio::co_spawn(context, connect(std::move(endpoints)), asio::detached);
@@ -115,13 +155,13 @@ void render() {
   SDL_SetRenderDrawColor(renderer, 0, 0, 0, SDL_ALPHA_OPAQUE);
   SDL_RenderClear(renderer);
 
-  std::vector<SDL_FRect> rects;
-  for (const auto& [id, player] : players.data) {
-    rects.emplace_back(player.current_x, player.current_y, 32.0f, 32.0f);
-  }
+  SDL_FRect dst_rect {0, 0, WINDOW_WIDTH, WINDOW_HEIGHT};
+  SDL_RenderTexture(renderer, map_texture, NULL, &dst_rect);
 
-  SDL_SetRenderDrawColor(renderer, 0, 0, 255, SDL_ALPHA_OPAQUE);
-  SDL_RenderFillRects(renderer, rects.data(), rects.size());
+  for (const auto& [id, player] : players.data) {
+    SDL_FRect dst_rect {player.current_x, player.current_y, 32.0f, 32.0f};
+    SDL_RenderTexture(renderer, char_textures[2], NULL, &dst_rect);
+  }
 
   SDL_FRect player_rect{player.current_x, player.current_y, 32.0f, 32.0f};
   SDL_SetRenderDrawColor(renderer, 255, 255, 0, SDL_ALPHA_OPAQUE);
@@ -155,5 +195,13 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
 
 void SDL_AppQuit(void *appstate, SDL_AppResult result)
 {
+  if (map_texture != nullptr) {
+    SDL_DestroyTexture(map_texture);
+  }
+  for (int i = 0; i <= 5; i++) {
+    if (char_textures[i] != nullptr) {
+      SDL_DestroyTexture(char_textures[i]);
+    }
+  }
   // SDL cleans window and renderer by itself
 }

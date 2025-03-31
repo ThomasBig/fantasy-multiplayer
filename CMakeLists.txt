@@ -29,3 +29,14 @@ add_executable(FantasyChatServer server.cpp ${SHARED_SRC})
 
 target_link_libraries(FantasyChatClient PRIVATE SDL3::SDL3)
 target_link_libraries(FantasyChatServer PRIVATE SDL3::SDL3)
+
+# Copy all .bmp files from /sprites to the build and release/sprites folders
+file(GLOB BMP_FILES "${CMAKE_CURRENT_SOURCE_DIR}/sprites/*.bmp")
+foreach(BMP_FILE ${BMP_FILES})
+    add_custom_command(TARGET FantasyChatClient POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/sprites"
+        COMMAND ${CMAKE_COMMAND} -E copy ${BMP_FILE} "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/sprites/")
+    add_custom_command(TARGET FantasyChatServer POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/sprites"
+        COMMAND ${CMAKE_COMMAND} -E copy ${BMP_FILE} "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/sprites/")
+endforeach()
