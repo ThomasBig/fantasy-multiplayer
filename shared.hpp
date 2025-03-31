@@ -8,16 +8,17 @@ struct Player {
   float target_y = 135.0f;
   float current_x = 240.0f;
   float current_y = 135.0f;
+  int skin = 0;
 
   std::string serialize() const {
     std::stringstream serialized;
-    serialized << target_x << " " << target_y;
+    serialized << skin << " " << target_x << " " << target_y;
     return serialized.str();
   }
 
   void deserialize(std::string serialized) {
     std::stringstream stream(serialized);
-    stream >> target_x >> target_y;
+    stream >> skin >> target_x >> target_y;
   }
 
   void update(int delta_ms) {
@@ -49,16 +50,18 @@ struct Players
   void deserialize(std::string serialized) {
     std::stringstream stream(serialized);
     int id;
+    int skin;
     float x;
     float y;
     std::unordered_set<int> used_ids;
 
-    while (stream >> id >> x >> y) {
+    while (stream >> id >> skin >> x >> y) {
       if (data.find(id) != data.end()) {
+        data[id].skin = skin;
         data[id].target_x = x;
         data[id].target_y = y;
       } else {
-        data[id] = {x,y, x,y};
+        data[id] = {x,y, x,y, skin};
       }
       used_ids.insert(id);
     }

@@ -146,6 +146,9 @@ SDL_AppResult SDL_AppEvent(void *appstate, SDL_Event *event) {
       case SDL_SCANCODE_D:
         dir_x = 1;
         break;
+      case SDL_SCANCODE_C:
+        player.skin = (player.skin + 1) % 6;
+        break;
     }
   }
   return SDL_APP_CONTINUE;
@@ -160,7 +163,8 @@ void render() {
 
   for (const auto& [id, player] : players.data) {
     SDL_FRect dst_rect {player.current_x, player.current_y, 32.0f, 32.0f};
-    SDL_RenderTexture(renderer, char_textures[2], NULL, &dst_rect);
+    int skin = std::max(std::min(player.skin, 5), 0); // clamp 0 to 5
+    SDL_RenderTexture(renderer, char_textures[skin], NULL, &dst_rect);
   }
 
   SDL_FRect player_rect{player.current_x, player.current_y, 32.0f, 32.0f};
