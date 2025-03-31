@@ -14,8 +14,6 @@ SDL_Renderer *renderer = NULL;
 asio::io_context context;
 tcp::socket client_socket(context);
 Uint64 last_update = 0;
-Uint64 current_update = 0;
-Uint64 delta_update;
 int dir_x = 0;
 int dir_y = 0;
 bool should_exit = false;
@@ -32,34 +30,29 @@ SDL_Texture *char_textures[6];
 
 SDL_AppResult load_texture(SDL_Texture** texture, const char* filename){
   SDL_Surface *surface = NULL;
-  char *png_path = NULL;
-  /* SDL_Surface is pixel data the CPU can access. SDL_Texture is pixel data the GPU can access.
-  Load a .bmp into a surface, move it to a texture from there. */
-
-  SDL_asprintf(&png_path, "%s/sprites/%s.bmp", SDL_GetBasePath(), filename);  /* allocate a string of the full file path */
-  surface = SDL_LoadBMP(png_path);
+  char *path = NULL;
+  SDL_asprintf(&path, "%s/sprites/%s.bmp", SDL_GetBasePath(), filename);
+  surface = SDL_LoadBMP(path);
   if (!surface) {
     SDL_Log("Couldn't load image: %s", SDL_GetError());
      return SDL_APP_FAILURE;
   }
-
-  SDL_free(png_path);  /* done with this, the file is loaded. */
-
+  SDL_free(path);
   *texture = SDL_CreateTextureFromSurface(renderer, surface);
   if (!texture) {
     SDL_Log("Couldn't create static texture: %s", SDL_GetError());
     return SDL_APP_FAILURE;
   }
   SDL_SetTextureScaleMode(*texture, SDL_SCALEMODE_NEAREST);
-
-  SDL_DestroySurface(surface);  /* done with this, the texture has a copy of the pixels now. */
+  SDL_DestroySurface(surface);
   return SDL_APP_CONTINUE;
 }
 
 asio::awaitable<void> writer() {
   while (true) {
     std::string serialized = player.serialize();
-    auto [ec, _count] = co_await client_socket.async_send(asio::buffer(serialized.data(), serialized.length()), asio::as_tuple);
+    auto [ec, _count] = co_await client_socket.async_send(
+      asio::buffer(serialized.data(), serialized.length()), asio::as_tuple);
     if (ec) {
       std::cout << "Could not send the message: " << ec.message() << "\n";
       co_return;
@@ -72,7 +65,8 @@ asio::awaitable<void> writer() {
 asio::awaitable<void> reader() {
   char data[1024];
   while (true) {
-    auto [ec, len] = co_await client_socket.async_receive(asio::buffer(data, 1024), asio::as_tuple);
+    auto [ec, len] = co_await client_socket.async_receive(
+      asio::buffer(data, 1024), asio::as_tuple);
     std::string received(data, len);
     int n = received.find_first_of(' ');
     player_id = atoi(received.substr(0, n).c_str());
@@ -87,9 +81,7 @@ asio::awaitable<void> connect(const tcp::resolver::results_type endpoints) {
     std::cout << "Could not connect: " << error_code.message() << "\n";
     co_return;
   }
-
   co_await (writer() || reader());
-
   should_exit = true;
 }
 
@@ -184,11 +176,11 @@ void render() {
 
 SDL_AppResult SDL_AppIterate(void *appstate) {
   if (should_exit) {
-    return SDL_APP_FAILURE; // or SDL_APP_SUCCESS
+    return SDL_APP_FAILURE;
   }
 
-  current_update = SDL_GetTicks();
-  delta_update = current_update - last_update;
+  Uint64 current_update = SDL_GetTicks();
+  Uint64 delta_update = current_update - last_update;
 
   player.current_x += delta_update * Player::speed * dir_x;
   player.current_y += delta_update * Player::speed * dir_y;
