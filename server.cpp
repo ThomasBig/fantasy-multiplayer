@@ -36,7 +36,7 @@ asio::awaitable<void> reader(int player_id) {
       players.data.erase(player_id);
       co_return;
     }
-    players.data[player_id].update(std::string(data, len));
+    players.data[player_id].deserialize(std::string(data, len));
   }
 }
 
@@ -66,20 +66,34 @@ asio::awaitable<void> listener(asio::ip::port_type port) {
   }
 }
 
+asio::awaitable<void> game_loop()
+{
+  int delta_ms = 100;
+  while (true) {
+    for (auto& [id, player] : players.data) {
+      player.update(delta_ms);
+      std::cout << id << " is on " << player.current_x << " " << player.current_y << " and targets " << player.target_x << " " << player.target_y << "\n";
+    }
+    asio::steady_timer timer(co_await asio::this_coro::executor, asio::chrono::milliseconds(delta_ms));
+    co_await timer.async_wait(asio::use_awaitable);
+  }
+}
+
 int main(int argc, char* argv[]) {
   if (argc < 2) {
     std::cout << "Usage: server.exe port\n";
     return 0;
   }
 
-  asio::io_context io_context;
-  asio::signal_set signals(io_context, SIGINT, SIGTERM);
-  signals.async_wait([&](asio::error_code _ec, int _signal){ io_context.stop(); });
+  asio::io_context context;
+  asio::signal_set signals(context, SIGINT, SIGTERM);
+  signals.async_wait([&](asio::error_code _ec, int _signal){ context.stop(); });
 
   asio::ip::port_type port;
   std::from_chars(argv[1], argv[1] + std::strlen(argv[1]), port);
-  co_spawn(io_context, listener(port), asio::detached);
+  co_spawn(context, listener(port), asio::detached);
+  co_spawn(context, game_loop(), asio::detached);
 
-  io_context.run();
+  context.run();
   return 0;
 }

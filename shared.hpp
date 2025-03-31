@@ -11,13 +11,26 @@ struct Player {
 
   std::string serialize() const {
     std::stringstream serialized;
-    serialized << current_x << " " << current_y;
+    serialized << target_x << " " << target_y;
     return serialized.str();
   }
 
-  void update(std::string serialized) {
+  void deserialize(std::string serialized) {
     std::stringstream stream(serialized);
-    stream >> current_x >> current_y;
+    stream >> target_x >> target_y;
+  }
+
+  void update(int delta_ms) {
+    if (current_x < target_x) {
+      current_x = std::min(current_x + delta_ms * speed, target_x);
+    } else if (current_x > target_x) {
+      current_x = std::max(current_x - delta_ms * speed, target_x);
+    }
+    if (current_y < target_y) {
+      current_y = std::min(current_y + delta_ms * speed, target_y);
+    } else if (current_y > target_y) {
+      current_y = std::max(current_y - delta_ms * speed, target_y);
+    }
   }
 };
 
@@ -33,7 +46,7 @@ struct Players
     return serialized.str();
   }
 
-  void update(std::string serialized) {
+  void deserialize(std::string serialized) {
     std::stringstream stream(serialized);
     int id;
     float x;
@@ -42,8 +55,8 @@ struct Players
 
     while (stream >> id >> x >> y) {
       if (data.find(id) != data.end()) {
-        data[id].current_x = x;
-        data[id].current_y = y;
+        data[id].target_x = x;
+        data[id].target_y = y;
       } else {
         data[id] = {x,y, x,y};
       }

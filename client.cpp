@@ -3,6 +3,9 @@
 #include <SDL3/SDL_main.h>
 #include <iostream>
 #include <asio.hpp>
+#include <asio/experimental/awaitable_operators.hpp>
+using namespace asio::experimental::awaitable_operators;
+
 #include "shared.hpp"
 using asio::ip::tcp;
 
@@ -15,6 +18,7 @@ Uint64 current_update = 0;
 Uint64 delta_update;
 int dir_x = 0;
 int dir_y = 0;
+bool should_exit = false;
 
 constexpr int WINDOW_WIDTH = 960;
 constexpr int WINDOW_HEIGHT = 540;
@@ -27,10 +31,9 @@ asio::awaitable<void> writer() {
     std::string serialized = player.serialize();
     auto [ec, _count] = co_await client_socket.async_send(asio::buffer(serialized.data(), serialized.length()), asio::as_tuple);
     if (ec) {
-      // std::cout << "Could not send the message: " << ec.message() << "\n";
+      std::cout << "Could not send the message: " << ec.message() << "\n";
       co_return;
     }
-    // std::cout << "Wrote to server " << serialized << "\n";
     asio::steady_timer timer(context, asio::chrono::seconds(1));
     co_await timer.async_wait(asio::use_awaitable);
   }
@@ -40,7 +43,7 @@ asio::awaitable<void> reader() {
   char data[1024];
   while (true) {
     auto [ec, len] = co_await client_socket.async_receive(asio::buffer(data, 1024), asio::as_tuple);
-    players.update(std::string(data, len));
+    players.deserialize(std::string(data, len));
   }
 }
 
@@ -51,9 +54,10 @@ asio::awaitable<void> connect(const tcp::resolver::results_type endpoints) {
     std::cout << "Could not connect: " << error_code.message() << "\n";
     co_return;
   }
-  // std::cout << "Connected to " << client_socket.remote_endpoint() << ".\n";
-  co_spawn(context, writer(), asio::detached);
-  co_spawn(context, reader(), asio::detached);
+
+  co_await (writer() || reader());
+
+  should_exit = true;
 }
 
 SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[]) {
@@ -127,11 +131,21 @@ void render() {
 }
 
 SDL_AppResult SDL_AppIterate(void *appstate) {
+  if (should_exit) {
+    return SDL_APP_FAILURE; // or SDL_APP_SUCCESS
+  }
+
   current_update = SDL_GetTicks();
   delta_update = current_update - last_update;
 
   player.current_x += delta_update * Player::speed * dir_x;
   player.current_y += delta_update * Player::speed * dir_y;
+  player.target_x = player.current_x;
+  player.target_y = player.current_y;
+
+  for (auto& [_, player] : players.data) {
+    player.update(int(delta_update));
+  }
 
   render();
   context.poll();
