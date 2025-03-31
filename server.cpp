@@ -14,7 +14,7 @@ std::unordered_map<int, tcp::socket> sockets;
 
 asio::awaitable<void> writer(int player_id) {
   while (socket != nullptr) {
-    std::string serialized = players.serialize();
+    std::string serialized = std::to_string(player_id) + " " + players.serialize();
     auto [ec, _count] = co_await sockets.at(player_id).async_send(asio::buffer(serialized.data(), serialized.length()), asio::as_tuple);
     if (ec) {
       std::cout << "Could not send: " << ec.message() << "\n";

@@ -19,6 +19,7 @@ Uint64 delta_update;
 int dir_x = 0;
 int dir_y = 0;
 bool should_exit = false;
+int player_id = 0;
 
 constexpr int WINDOW_WIDTH = 960;
 constexpr int WINDOW_HEIGHT = 736;
@@ -72,7 +73,10 @@ asio::awaitable<void> reader() {
   char data[1024];
   while (true) {
     auto [ec, len] = co_await client_socket.async_receive(asio::buffer(data, 1024), asio::as_tuple);
-    players.deserialize(std::string(data, len));
+    std::string received(data, len);
+    int n = received.find_first_of(' ');
+    player_id = atoi(received.substr(0, n).c_str());
+    players.deserialize(received.substr(n+1));
   }
 }
 
@@ -162,12 +166,16 @@ void render() {
   SDL_RenderTexture(renderer, map_texture, NULL, &dst_rect);
 
   for (const auto& [id, player] : players.data) {
-    SDL_FRect dst_rect {player.current_x, player.current_y, 32.0f, 32.0f};
-    int skin = std::max(std::min(player.skin, 5), 0); // clamp 0 to 5
-    SDL_RenderTexture(renderer, char_textures[skin], NULL, &dst_rect);
+    if (player_id != id) {
+      SDL_FRect dst_rect {player.current_x, player.current_y, 32.0f, 32.0f};
+      int skin = std::max(std::min(player.skin, 5), 0); // clamp 0 to 5
+      SDL_RenderTexture(renderer, char_textures[skin], NULL, &dst_rect);
+    }
   }
 
   SDL_FRect player_rect{player.current_x, player.current_y, 32.0f, 32.0f};
+  SDL_RenderTexture(renderer, char_textures[player.skin], NULL, &player_rect);
+
   SDL_SetRenderDrawColor(renderer, 255, 255, 0, SDL_ALPHA_OPAQUE);
   SDL_RenderRect(renderer, &player_rect);
 
