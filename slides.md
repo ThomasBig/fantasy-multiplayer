@@ -351,3 +351,11 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
   return SDL_APP_CONTINUE;
 }
 ```
+
+---
+
+# Game Server
+
+* Can be headless, i.e, without graphics
+* Connects client, sends messages
+

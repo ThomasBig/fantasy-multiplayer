@@ -5,131 +5,54 @@
 #include <asio.hpp>
 #include <asio/experimental/awaitable_operators.hpp>
 using namespace asio::experimental::awaitable_operators;
-
-#include "shared.hpp"
 using asio::ip::tcp;
 
-SDL_Window *window = NULL;
-SDL_Renderer *renderer = NULL;
-asio::io_context context;
-tcp::socket client_socket(context);
-Uint64 last_update = 0;
-int dir_x = 0;
-int dir_y = 0;
-bool should_exit = false;
-int player_id = 0;
+#include "shared.hpp"
 
-constexpr int WINDOW_WIDTH = 960;
-constexpr int WINDOW_HEIGHT = 736;
+class Game {
+  Players players;
+  Player player;
+  int player_id = 0;
+  Uint64 last_update = 0;
+  int dir_x = 0;
+  int dir_y = 0;
 
-Players players;
-Player player;
+public:
+  void update() {
+    Uint64 current_update = SDL_GetTicks();
+    Uint64 delta_update = current_update - last_update;
 
-SDL_Texture *map_texture = nullptr;
-SDL_Texture *char_textures[6];
+    player.current_x += delta_update * Player::speed * dir_x;
+    player.current_y += delta_update * Player::speed * dir_y;
+    player.target_x = player.current_x;
+    player.target_y = player.current_y;
 
-SDL_AppResult load_texture(SDL_Texture** texture, const char* filename){
-  SDL_Surface *surface = NULL;
-  char *path = NULL;
-  SDL_asprintf(&path, "%s/sprites/%s.bmp", SDL_GetBasePath(), filename);
-  surface = SDL_LoadBMP(path);
-  if (!surface) {
-    SDL_Log("Couldn't load image: %s", SDL_GetError());
-     return SDL_APP_FAILURE;
-  }
-  SDL_free(path);
-  *texture = SDL_CreateTextureFromSurface(renderer, surface);
-  if (!texture) {
-    SDL_Log("Couldn't create static texture: %s", SDL_GetError());
-    return SDL_APP_FAILURE;
-  }
-  SDL_SetTextureScaleMode(*texture, SDL_SCALEMODE_NEAREST);
-  SDL_DestroySurface(surface);
-  return SDL_APP_CONTINUE;
-}
-
-asio::awaitable<void> writer() {
-  while (true) {
-    std::string serialized = player.serialize();
-    auto [ec, _count] = co_await client_socket.async_send(
-      asio::buffer(serialized.data(), serialized.length()), asio::as_tuple);
-    if (ec) {
-      std::cout << "Could not send the message: " << ec.message() << "\n";
-      co_return;
+    for (auto& [_, player] : players.data) {
+      player.update(int(delta_update));
     }
-    asio::steady_timer timer(context, asio::chrono::seconds(1));
-    co_await timer.async_wait(asio::use_awaitable);
-  }
-}
 
-asio::awaitable<void> reader() {
-  char data[1024];
-  while (true) {
-    auto [ec, len] = co_await client_socket.async_receive(
-      asio::buffer(data, 1024), asio::as_tuple);
-    std::string received(data, len);
-    int n = received.find_first_of(' ');
-    player_id = atoi(received.substr(0, n).c_str());
-    players.deserialize(received.substr(n+1));
-  }
-}
-
-asio::awaitable<void> connect(const tcp::resolver::results_type endpoints) {
-  auto [error_code, endpoint] = co_await asio::async_connect(
-    client_socket, endpoints, asio::as_tuple);
-  if (error_code) {
-    std::cout << "Could not connect: " << error_code.message() << "\n";
-    co_return;
-  }
-  co_await (writer() || reader());
-  should_exit = true;
-}
-
-SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[]) {
-  if (argc < 3) {
-    std::cout << "Usage: client.exe address port\n";
-    return SDL_APP_FAILURE;
+    last_update = current_update;
   }
 
-  SDL_SetAppMetadata("Multiplayer Game", "1.0", "multiplayer-game");
-
-  if (!SDL_Init(SDL_INIT_VIDEO)) {
-    SDL_Log("Couldn't initialize SDL: %s", SDL_GetError());
-    return SDL_APP_FAILURE;
+  void update_players(int player_id, std::string deserealized) {
+    this->player_id = player_id;
+    players.deserialize(deserealized);
   }
 
-  if (!SDL_CreateWindowAndRenderer("multiplayer-game",
-      WINDOW_WIDTH, WINDOW_HEIGHT, 0, &window, &renderer)) {
-    SDL_Log("Couldn't create window/renderer: %s", SDL_GetError());
-    return SDL_APP_FAILURE;
+  Uint64 get_player_id() {
+    return player_id;
   }
 
-  if (SDL_AppResult loaded = load_texture(&map_texture, "map"); loaded != SDL_APP_CONTINUE) {
-    return loaded;
+  Players const& get_players() {
+    return players;
   }
 
-  for (int i = 1; i <= 6; i++) {
-    std::string filename = std::string("char")+std::to_string(i);
-    if (SDL_AppResult loaded = load_texture(&char_textures[i-1], filename.c_str()); loaded != SDL_APP_CONTINUE) {
-      return loaded;
-    }
+  Player const& get_player() {
+    return player;
   }
 
-  tcp::resolver resolver(context);
-  auto endpoints = resolver.resolve(argv[1], argv[2]);
-  asio::co_spawn(context, connect(std::move(endpoints)), asio::detached);
-
-  return SDL_APP_CONTINUE;
-}
-
-SDL_AppResult SDL_AppEvent(void *appstate, SDL_Event *event) {
-  if (event->type == SDL_EVENT_QUIT) {
-    return SDL_APP_SUCCESS;
-  }
-  dir_x = 0;
-  dir_y = 0;
-  if (event->type == SDL_EVENT_KEY_DOWN) {
-    switch (event->key.scancode) {
+  void key_press(SDL_Scancode scancode) {
+    switch (scancode) {
       case SDL_SCANCODE_W:
         dir_y = -1;
         break;
@@ -147,65 +70,207 @@ SDL_AppResult SDL_AppEvent(void *appstate, SDL_Event *event) {
         break;
     }
   }
-  return SDL_APP_CONTINUE;
-}
 
-void render() {
-  SDL_SetRenderDrawColor(renderer, 0, 0, 0, SDL_ALPHA_OPAQUE);
-  SDL_RenderClear(renderer);
+  void key_release(SDL_Scancode scancode) {
+    dir_x = 0;
+    dir_y = 0;
+  }
 
-  SDL_FRect dst_rect {0, 0, WINDOW_WIDTH, WINDOW_HEIGHT};
-  SDL_RenderTexture(renderer, map_texture, NULL, &dst_rect);
+} game;
 
-  for (const auto& [id, player] : players.data) {
-    if (player_id != id) {
-      SDL_FRect dst_rect {player.current_x, player.current_y, 32.0f, 32.0f};
-      int skin = std::max(std::min(player.skin, 5), 0); // clamp 0 to 5
-      SDL_RenderTexture(renderer, char_textures[skin], NULL, &dst_rect);
+class Network {
+  asio::io_context context;
+  tcp::socket client_socket;
+  bool should_exit = false;
+
+  asio::awaitable<void> writer() {
+    while (true) {
+      std::string serialized = game.get_player().serialize();
+      auto [ec, _count] = co_await client_socket.async_send(
+        asio::buffer(serialized.data(), serialized.length()), asio::as_tuple);
+      if (ec) {
+        std::cout << "Could not send the message: " << ec.message() << "\n";
+        co_return;
+      }
+      asio::steady_timer timer(context, asio::chrono::seconds(1));
+      co_await timer.async_wait(asio::use_awaitable);
     }
   }
 
-  SDL_FRect player_rect{player.current_x, player.current_y, 32.0f, 32.0f};
-  SDL_RenderTexture(renderer, char_textures[player.skin], NULL, &player_rect);
+  asio::awaitable<void> reader() {
+    char data[1024];
+    while (true) {
+      auto [ec, len] = co_await client_socket.async_receive(
+        asio::buffer(data, 1024), asio::as_tuple);
+      std::string received(data, len);
+      int n = received.find_first_of(' ');
+      game.update_players(atoi(received.substr(0, n).c_str()), received.substr(n+1));
+    }
+  }
 
-  SDL_SetRenderDrawColor(renderer, 255, 255, 0, SDL_ALPHA_OPAQUE);
-  SDL_RenderRect(renderer, &player_rect);
+  asio::awaitable<void> connect(const tcp::resolver::results_type endpoints) {
+    auto [error_code, endpoint] = co_await asio::async_connect(
+      client_socket, endpoints, asio::as_tuple);
+    if (error_code) {
+      std::cout << "Could not connect: " << error_code.message() << "\n";
+      co_return;
+    }
+    co_await (writer() || reader());
+    should_exit = true;
+  }
 
-  SDL_RenderPresent(renderer);
-}
+public:
+  Network() : client_socket(context) {}
 
-SDL_AppResult SDL_AppIterate(void *appstate) {
-  if (should_exit) {
+  void start(const char* server_address, const char* server_port) {
+    tcp::resolver resolver(context);
+    auto endpoints = resolver.resolve(server_address, server_port);
+    asio::co_spawn(context, connect(std::move(endpoints)), asio::detached);
+  }
+
+  SDL_AppResult update() {
+    if (should_exit) {
+      return SDL_APP_SUCCESS;
+    }
+    context.poll();
+    return SDL_APP_CONTINUE;
+  }
+} network;
+
+class Renderer {
+  SDL_Window *window = NULL;
+  SDL_Renderer *renderer = NULL;
+  const int WINDOW_WIDTH = 960;
+  const int WINDOW_HEIGHT = 736;
+  SDL_Texture *map_texture = nullptr;
+  SDL_Texture *char_textures[6];
+
+  SDL_AppResult load_texture(SDL_Texture** texture, const char* filename){
+    SDL_Surface *surface = NULL;
+    char *path = NULL;
+    SDL_asprintf(&path, "%s/sprites/%s.bmp", SDL_GetBasePath(), filename);
+    surface = SDL_LoadBMP(path);
+    if (!surface) {
+      SDL_Log("Couldn't load image: %s", SDL_GetError());
+      return SDL_APP_FAILURE;
+    }
+    SDL_free(path);
+    *texture = SDL_CreateTextureFromSurface(renderer, surface);
+    if (!texture) {
+      SDL_Log("Couldn't create static texture: %s", SDL_GetError());
+      return SDL_APP_FAILURE;
+    }
+    SDL_SetTextureScaleMode(*texture, SDL_SCALEMODE_NEAREST);
+    SDL_DestroySurface(surface);
+    return SDL_APP_CONTINUE;
+  }
+
+public:
+  void update() {
+    SDL_SetRenderDrawColor(renderer, 0, 0, 0, SDL_ALPHA_OPAQUE);
+    SDL_RenderClear(renderer);
+
+    SDL_FRect dst_rect {0, 0, float(WINDOW_WIDTH), float(WINDOW_HEIGHT)};
+    SDL_RenderTexture(renderer, map_texture, NULL, &dst_rect);
+
+    for (const auto& [id, player] : game.get_players().data) {
+      if (id != game.get_player_id()) {
+        SDL_FRect dst_rect {player.current_x, player.current_y, 32.0f, 32.0f};
+        int skin = std::max(std::min(player.skin, 5), 0); // clamp 0 to 5
+        SDL_RenderTexture(renderer, char_textures[skin], NULL, &dst_rect);
+      }
+    }
+
+    const Player& player = game.get_player();
+    SDL_FRect player_rect{player.current_x, player.current_y, 32.0f, 32.0f};
+    SDL_RenderTexture(renderer, char_textures[player.skin], NULL, &player_rect);
+
+    SDL_SetRenderDrawColor(renderer, 255, 255, 0, SDL_ALPHA_OPAQUE);
+    SDL_RenderRect(renderer, &player_rect);
+
+    SDL_RenderPresent(renderer);
+  }
+
+  SDL_AppResult init() {
+    SDL_SetAppMetadata("Multiplayer Game", "1.0", "multiplayer-game");
+
+    if (!SDL_Init(SDL_INIT_VIDEO)) {
+      SDL_Log("Couldn't initialize SDL: %s", SDL_GetError());
+      return SDL_APP_FAILURE;
+    }
+
+    if (!SDL_CreateWindowAndRenderer("multiplayer-game",
+        WINDOW_WIDTH, WINDOW_HEIGHT, 0, &window, &renderer)) {
+      SDL_Log("Couldn't create window/renderer: %s", SDL_GetError());
+      return SDL_APP_FAILURE;
+    }
+
+    if (SDL_AppResult loaded = load_texture(&map_texture, "map"); loaded != SDL_APP_CONTINUE) {
+      return loaded;
+    }
+
+    for (int i = 1; i <= 6; i++) {
+      std::string filename = std::string("char")+std::to_string(i);
+      if (SDL_AppResult loaded = load_texture(&char_textures[i-1], filename.c_str()); loaded != SDL_APP_CONTINUE) {
+        return loaded;
+      }
+    }
+
+    return SDL_APP_CONTINUE;
+  }
+
+  void quit() {
+    if (map_texture != nullptr) {
+      SDL_DestroyTexture(map_texture);
+    }
+    for (int i = 0; i <= 5; i++) {
+      if (char_textures[i] != nullptr) {
+        SDL_DestroyTexture(char_textures[i]);
+      }
+    }
+    // SDL cleans window and renderer by itself
+  }
+} renderer;
+
+
+SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[]) {
+  if (argc < 3) {
+    std::cout << "Usage: client.exe address port\n";
     return SDL_APP_FAILURE;
   }
 
-  Uint64 current_update = SDL_GetTicks();
-  Uint64 delta_update = current_update - last_update;
-
-  player.current_x += delta_update * Player::speed * dir_x;
-  player.current_y += delta_update * Player::speed * dir_y;
-  player.target_x = player.current_x;
-  player.target_y = player.current_y;
-
-  for (auto& [_, player] : players.data) {
-    player.update(int(delta_update));
+  if (SDL_AppResult result = renderer.init(); result != SDL_APP_CONTINUE) {
+    return result;
   }
 
-  render();
-  context.poll();
-  last_update = current_update;
+  network.start(argv[1], argv[2]);
   return SDL_APP_CONTINUE;
 }
 
-void SDL_AppQuit(void *appstate, SDL_AppResult result)
-{
-  if (map_texture != nullptr) {
-    SDL_DestroyTexture(map_texture);
+SDL_AppResult SDL_AppEvent(void *appstate, SDL_Event *event) {
+  if (event->type == SDL_EVENT_QUIT) {
+    return SDL_APP_SUCCESS;
   }
-  for (int i = 0; i <= 5; i++) {
-    if (char_textures[i] != nullptr) {
-      SDL_DestroyTexture(char_textures[i]);
-    }
+
+  if (event->type == SDL_EVENT_KEY_DOWN) {
+    game.key_press(event->key.scancode);
   }
-  // SDL cleans window and renderer by itself
+  else if (event->type == SDL_EVENT_KEY_UP) {
+    game.key_release(event->key.scancode);
+  }
+
+  return SDL_APP_CONTINUE;
+}
+
+SDL_AppResult SDL_AppIterate(void *appstate) {
+  game.update();
+  renderer.update();
+  if (SDL_AppResult update = network.update(); update != SDL_APP_CONTINUE) {
+    return update;
+  }
+  return SDL_APP_CONTINUE;
+}
+
+void SDL_AppQuit(void *appstate, SDL_AppResult result) {
+  renderer.quit();
 }
