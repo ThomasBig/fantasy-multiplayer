@@ -7,6 +7,27 @@
 
 ![](game.png)
 
+## Client executable
+Game client which renders graphics in a window, handles key presses and handles networking in the background. Also shows a yellow border around
+your character.
+
+Usage: `client.exe address port`
+* **address** - server address to connect to (such as `127.0.0.1` for localhost or `12.34.56.789` for some IPv4 address)
+* **port** - sever port to connect to (such as `5050` or `55555`)
+
+Keyboard keys:
+* **W** - move up
+* **A** - move left
+* **S** - move down
+* **D** - move right
+* **C** - change avatar
+
+## Server executable
+Headless server which updates connected clients with their location and avatar info.
+
+Usage: `server.exe port`
+* **port** - port number where to start server (such as `5050` or `55555`)
+
 ## Recommended Programs
 **Visual Studio 2020 C++ compiler**: to compile C++20 code\
 **Git**: to download ASIO library and versioning\
