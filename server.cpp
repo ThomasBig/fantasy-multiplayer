@@ -66,8 +66,7 @@ asio::awaitable<void> listener(asio::ip::port_type port) {
   }
 }
 
-asio::awaitable<void> game_loop()
-{
+asio::awaitable<void> game_loop() {
   int delta_ms = 100;
   while (true) {
     for (auto& [id, player] : players.data) {

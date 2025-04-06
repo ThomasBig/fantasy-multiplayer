@@ -35,8 +35,7 @@ struct Player {
   }
 };
 
-struct Players
-{
+struct Players {
   std::unordered_map<int, Player> data;
 
   std::string serialize() const {
@@ -75,6 +74,5 @@ struct Players
         ++iterator;
       }
     }
-
   }
 };

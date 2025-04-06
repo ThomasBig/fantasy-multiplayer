@@ -9,34 +9,38 @@ class: invert
 
 ---
 
+![bg](game.png)
+
+
+---
+
 # Premise
 
-* We will learn how to make a simple multiplayer game without losing our mind
+* We will learn how to make a simple multiplayer game
 * We will use C++20 coroutines and ASIO library for basic networking objects
 * We will NOT make production ready code
-* We will MAKE a functional and understandable PROTOTYPE
+* We will make a functional and understandable PROTOTYPE
 
 ---
 
 # Speaker
 * Tomáš Janoušek
-* Grew up on: WoW, Counter-Strike, Overwatch, Minecraft
-* Wrote a master's thesis on networking
-* Worked on: TopSpin 2K25, Mafia: The Old Country, ArmA Games
+* Work Experience: Arma 4, Mafia: The Old Country, TopSpin 2K25
+* Networking Experience: Master's thesis
+* You don't need any of it to start
 
 ---
 
 # Recommended Tools
-* VS Code (C++, CMake and CMake Tools Extensions)
-* C++20 (Coroutines)
+* VS Code
+* C++20
 * CMake
 * Git
 
 ---
 
 # Hello, server!
-*First we will show an example, how to connect to a server with asio library
-without using coroutines*
+*First we will show an example, how to connect to a server with ASIO library.*
 
 ---
 
@@ -66,10 +70,8 @@ int main(int argc, char* argv[]) {
 
 ```c++
 void connect(tcp::socket& socket, const tcp::resolver::results_type& endpoints) {
-  asio::async_connect(socket, endpoints, [](std::error_code ec, tcp::endpoint)
-  {
-    if (ec)
-    {
+  asio::async_connect(socket, endpoints, [](std::error_code ec, tcp::endpoint) {
+    if (ec) {
       std::cout << "Could not connect: " << ec.message() << "\n";
       return;
     }
@@ -80,44 +82,41 @@ void connect(tcp::socket& socket, const tcp::resolver::results_type& endpoints) 
 ---
 
 # Introspection
-* To connect to server, we had to call create a context object, socket
-and resolver
-* We used a callback to print to screen connected if we were successful
-* If we needed to continue making the program, i.e., to ask player for their
-name, we would need to add a new function inside the callback or handle the
-state in some state machine
-* Thankfully, we can use a better way, a coroutine
+* We connected a client to already running server
+* We created an io context to run asynchronous tasks
+* We used a callback
+* If we would need to send message to server after connection is established,
+we would need a callback inside a callback or handle state in some flags.
 
 ---
 # Coroutines
-*Now we are aware of downsides of callbacks, so let's explore a newer approach.*
+*Now we are aware of downsides of callbacks, so let's explore another approach.*
 
 ---
 
 # Coroutines: What are they?
 * Better functions™
 * They run and return a value, however, they can be paused (suspended) to wait
-for time consuming operations and main thread can do things in the meantime (i.e, draw graphics, handle players input, etc.)
-* Not specific to networking
-* Similar, but more powerful than Javascript's `async`/`await`
+* Program can do things in the meantime (draw graphics, handle input, etc.)
+* Not specific to networking, but very useful for networking
 
 ---
 
 # ASIO Coroutines
-* Created using `asio::co_spawn(executor, fn, handler)`
-* Suspended using `co_await`
-* `asio::awaitable<Type>` return type in coroutine signature
-* Values returned using `co_return`
+* Function signature has return type of `asio::awaitable<Type>`
+* Spawned using `asio::co_spawn(executor, awaitable_fn, exception_handler)`
+* Suspended using `co_await awaitable_fn` (C++20 keyword)
+* Values returned using `co_return` (C++20 keyword)
 
 ---
 
 
-# Hello world!
+# Wait for Hello world!
 ```c++
 #include <iostream>
 #include <asio.hpp>
 
-asio::awaitable<int> timer(asio::io_context& context) {
+asio::awaitable<int> greeter(asio::io_context& context) {
     asio::steady_timer timer(context, asio::chrono::seconds(3));
     std::cout << "Wait for it... ";
     co_await timer.async_wait(asio::use_awaitable);
@@ -127,79 +126,44 @@ asio::awaitable<int> timer(asio::io_context& context) {
 
 int main() {
     asio::io_context context;
-    asio::co_spawn(context, timer(context), asio::detached);
+    asio::co_spawn(context, greeter(context), asio::detached);
     context.run();
     return 0;
 }
 ```
 
----
+<!-- ---
 # Coroutines Tips
-* Use `asio::use_tuple` over `asio::use_awaitable`
 * Use shared pointers over references, raw pointers
 * Use custom completion handler to handle errors
-* See 'Making Online Multiplayer Games in C++' for more info
+* Use `asio::as_tuple` over `asio::use_awaitable`
+* See 'Making Online Multiplayer Games in C++' for more info -->
 
 ---
 
-# Client->Server Connection
-*Now we will make a functional example in which we will connect a client to
-server. Server will wait for any number of connections.*
+# Client Server Connection
+*Once again, we will connect a client to server. Then we will create a server
+that will wait for any number of connections.*
 
 ---
 
-# Client Connection 1/2
-```c++
-#include <iostream>
-#include <asio.hpp>
-using asio::ip::tcp;
-
-asio::awaitable<void> connect(tcp::socket& socket,
-  const tcp::resolver::results_type& endpoints);
-
-int main(int argc, char* argv[]) {
-  asio::io_context io_context;
-  tcp::socket socket(io_context);
-  tcp::resolver resolver(io_context);
-  auto endpoints = resolver.resolve("127.0.0.1", "8080");
-  co_spawn(io_context, connect(socket, endpoints), asio::detached);
-  io_context.run();
-  return 0;
-}
-```
-
----
-
-# Client Connection 2/2
-
+# Client Connection
 ```c++
 asio::awaitable<void> connect(tcp::socket& socket,
-  const tcp::resolver::results_type& endpoints)
-{
-  auto [error_code, endpoint] = co_await asio::async_connect(
-    socket, endpoints, asio::as_tuple);
-
+    const tcp::resolver::results_type& endpoints) {
+  auto [error_code, _endpoint] =
+    co_await asio::async_connect(socket, endpoints, asio::as_tuple);
   if (error_code) {
     std::cout << "Could not connect: " << error_code.message() << "\n";
     co_return;
   }
-
-  std::cout << "Connected to " << socket.remote_endpoint() << ".\n";
+  std::cout << "Connected!";
 }
-```
 
----
-# Client Connection with Custom Address
-```c++
 int main(int argc, char* argv[]) {
-  if (argc < 3) {
-    std::cout << "Usage: client.exe address port\n";
-    return 0;
-  }
-  //...
-  auto endpoints = resolver.resolve(argv[1], argv[2]);
-  co_spawn(io_context, connect(socket, endpoints), asio::detached);
-  //...
+  // ...
+  co_spawn(context, connect(socket, endpoints), asio::detached);
+  // ...
 }
 ```
 
@@ -230,57 +194,39 @@ asio::awaitable<void> listener() {
   auto executor = co_await asio::this_coro::executor;
   std::cout << "Staring a server on port 8080...";
   tcp::acceptor acceptor(executor, {tcp::v4(), 8080});
-  auto [ec, socket] = co_await acceptor.async_accept(asio::as_tuple);
   while (true) {
+    auto [ec, socket] = co_await acceptor.async_accept(asio::as_tuple);
     if (ec) {
       std::cout << "Could not accept a new connection: " << ec.message() << "\n";
       co_return;
     }
-    std::cout << "There is a new connection from "<< socket.remote_endpoint() << "!\n";
+    std::cout << "There is a new connection!\n";
+    // ... use socket variable to send and receive messages
   }
 }
 ```
 
 ---
-# Server Connection with Custom Port
-
-```C++
-asio::awaitable<void> listener(asio::ip::port_type port) {
-  //...
-  tcp::acceptor acceptor(executor, {tcp::v4(), port});
-  //...
-}
-
-int main(int argc, char* argv[]) {
-  //...
-  asio::ip::port_type port;
-  std::from_chars(argv[1], argv[1] + std::strlen(argv[1]), port);
-  co_spawn(io_context, listener(port), asio::detached);
-  //...
-  return 0;
-}
-```
----
 
 # Test, test, test!
 *Before making the fully-fledged game, we need to make sure our basic
 functionality is working as intended. We will try that we can connect notebook
-to PC. PC will use fixed and wired internet, notebook willuse internet from a mobile hotspot. They use internet from different ISP companies, that is
-Vodafone hotspot and O2 wired connection.*
+to PC. PC will use fixed and wired internet, notebook will use internet from
+a mobile hotspot from a different ISP.*
 
 ---
 
-# Common reason why server does not connect
-* ISP (private IP)
-* Firewall
-* Router (port forwarding)
-* Antivirus (firewall)
+# Why we can't run just server...
+* Private IP from ISP
+* Firewall blocking external packets
+* Router not forwarding the port
+* Antivirus blocking packets
 
 ---
 
-# How to circumfluent IP, firewall and other protections
+# How to circumfluent internet protections
 * Cloud server (AWS, Azure, Google Cloud): 100s€/month
-* Public IP from ISP & Custom Server: 10€/month + Server Cost
+* Custom Server & Public IP: 10€/month + Server Cost
 * Virtual Private Network (Hamachi, Zero Tier, RadminVPN): various free plans
 
 ---
@@ -291,24 +237,18 @@ Vodafone hotspot and O2 wired connection.*
 * Other players then connect to that network.
 * Then, all can communicate freely as they are on the same network, meaning one player can run the server and others join it.
 
----
-
-# Testing
-* Single machine (localhost)
-* Two PCs next to each other but on different networks (whatismyip)
-* Playing with friends (multiple PCs far away)
 
 ---
 
 # Recap
-*So far...*
+* We can create a client server connection
+* We can use coroutines (think of JS `async`/`await`)
+* We can test our program over the real internet
+* We still want to make a multiplayer game
 
 ---
-# Recap
-* C++20 and ASIO
-* Coroutines over callbacks
-* Client -> server connection
-* Tested over the real internet
+
+![bg](game.png)
 
 ---
 
@@ -387,8 +327,7 @@ SDL_AppResult SDL_AppEvent(void *appstate, SDL_Event *event) {
   return SDL_APP_CONTINUE;
 }
 
-void SDL_AppQuit(void *appstate, SDL_AppResult result)
-{
+void SDL_AppQuit(void *appstate, SDL_AppResult result) {
   // SDL cleans window and renderer by itself
 }
 ```
@@ -400,16 +339,15 @@ void SDL_AppQuit(void *appstate, SDL_AppResult result)
 asio::io_context context;
 
 SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[]) {
-  //sdl3 setup + networking...
-  asio::co_spawn(context,
-    connect(std::move(socket), std::move(endpoints)), // pass by value
-    asio::detached);
+  // SDL3 setup
+  // Networking setup
+  asio::co_spawn(context, connect(socket, endpoints)), asio::detached);
   return SDL_APP_CONTINUE;
 }
 
 SDL_AppResult SDL_AppIterate(void *appstate) {
-  render(); // all sld3 rendering
-  context.poll();
+  render(); // All SDL3 rendering
+  context.poll(); // runs ready networking operations
   return SDL_APP_CONTINUE;
 }
 ```
