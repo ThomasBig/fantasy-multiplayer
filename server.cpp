@@ -1,12 +1,13 @@
+// standard libraries
 #include <iostream>
-#include <asio.hpp>
-#include <memory>
 #include <map>
+// networking using asio
+#include <asio.hpp>
 #include <asio/experimental/awaitable_operators.hpp>
 using namespace asio::experimental::awaitable_operators;
-
-#include "shared.hpp"
 using asio::ip::tcp;
+// shared lib
+#include "shared.hpp"
 
 Players players;
 int last_id = 0;
