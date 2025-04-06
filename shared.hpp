@@ -4,15 +4,25 @@
 
 struct Player {
   static constexpr float speed = 0.1f;
-  float target_x = 240.0f;
-  float target_y = 135.0f;
-  float current_x = 240.0f;
-  float current_y = 135.0f;
-  int skin = 0;
+  float target_x;
+  float target_y;
+  float current_x;
+  float current_y;
+  int skin;
+
+  Player(float x, float y, int skin) {
+    target_x = x;
+    target_y = y;
+    current_x = x;
+    current_y = y;
+    this->skin = skin;
+  }
+
+  Player() : Player(240.0f, 135.0f, 0) {}
 
   std::string serialize() const {
     std::stringstream serialized;
-    serialized << skin << " " << target_x << " " << target_y;
+    serialized << skin << " " << int(target_x) << " " << int(target_y);
     return serialized.str();
   }
 
@@ -50,17 +60,17 @@ struct Players {
     std::stringstream stream(serialized);
     int id;
     int skin;
-    float x;
-    float y;
+    int x;
+    int y;
     std::unordered_set<int> used_ids;
 
     while (stream >> id >> skin >> x >> y) {
       if (data.find(id) != data.end()) {
         data[id].skin = skin;
-        data[id].target_x = x;
-        data[id].target_y = y;
+        data[id].target_x = float(x);
+        data[id].target_y = float(y);
       } else {
-        data[id] = {x,y, x,y, skin};
+        data[id] = Player(float(x), float(y), skin);
       }
       used_ids.insert(id);
     }

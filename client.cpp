@@ -18,6 +18,18 @@ class Game {
   int dir_y = 0;
 
 public:
+  Uint64 get_player_id() {
+    return player_id;
+  }
+
+  Players const& get_players() {
+    return players;
+  }
+
+  Player const& get_player() {
+    return player;
+  }
+
   void update() {
     Uint64 current_update = SDL_GetTicks();
     Uint64 delta_update = current_update - last_update;
@@ -34,21 +46,10 @@ public:
     last_update = current_update;
   }
 
-  void update_players(int player_id, std::string deserealized) {
+  void update_players(
+    int player_id, std::string deserialized) {
     this->player_id = player_id;
-    players.deserialize(deserealized);
-  }
-
-  Uint64 get_player_id() {
-    return player_id;
-  }
-
-  Players const& get_players() {
-    return players;
-  }
-
-  Player const& get_player() {
-    return player;
+    players.deserialize(deserialized);
   }
 
   void key_press(SDL_Scancode scancode) {
@@ -75,7 +76,6 @@ public:
     dir_x = 0;
     dir_y = 0;
   }
-
 } game;
 
 class Network {
@@ -104,7 +104,9 @@ class Network {
         asio::buffer(data, 1024), asio::as_tuple);
       std::string received(data, len);
       int n = received.find_first_of(' ');
-      game.update_players(atoi(received.substr(0, n).c_str()), received.substr(n+1));
+      game.update_players(
+        atoi(received.substr(0, n).c_str()),
+        received.substr(n+1));
     }
   }
 
@@ -138,10 +140,10 @@ public:
 } network;
 
 class Renderer {
+  static constexpr int WINDOW_WIDTH = 960;
+  static constexpr int WINDOW_HEIGHT = 736;
   SDL_Window *window = NULL;
   SDL_Renderer *renderer = NULL;
-  const int WINDOW_WIDTH = 960;
-  const int WINDOW_HEIGHT = 736;
   SDL_Texture *map_texture = nullptr;
   SDL_Texture *char_textures[6];
 
