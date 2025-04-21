@@ -16,7 +16,7 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[]) {
     return result;
   }
 
-  network.start(argv[1], argv[2]);
+  network.connect_to_server(argv[1], argv[2]);
   return SDL_APP_CONTINUE;
 }
 
@@ -36,9 +36,9 @@ SDL_AppResult SDL_AppEvent(void *appstate, SDL_Event *event) {
 }
 
 SDL_AppResult SDL_AppIterate(void *appstate) {
-  game.update();
+  game.update_state_locally();
   renderer.update();
-  if (SDL_AppResult update = network.update(); update != SDL_APP_CONTINUE) {
+  if (SDL_AppResult update = network.receive_updates(); update != SDL_APP_CONTINUE) {
     return update;
   }
   return SDL_APP_CONTINUE;

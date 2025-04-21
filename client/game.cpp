@@ -20,7 +20,7 @@ Player const& Game::get_player() {
   return player;
 }
 
-void Game::update() {
+void Game::update_state_locally() {
   Uint64 current_update = SDL_GetTicks();
   Uint64 delta_update = current_update - last_update;
 
@@ -39,7 +39,7 @@ void Game::update() {
   last_update = current_update;
 }
 
-void Game::update_players(int player_id, std::string deserialized) {
+void Game::update_state_from_net(int player_id, std::string deserialized) {
   this->player_id = player_id;
   players.deserialize(deserialized);
 }

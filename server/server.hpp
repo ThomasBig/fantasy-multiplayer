@@ -11,8 +11,8 @@ class Server {
   std::unordered_map<int, asio::ip::tcp::socket> sockets;
 
 private:
-  asio::awaitable<void> write_updates_to(int player_id);
-  asio::awaitable<void> read_updates_from(int player_id);
+  asio::awaitable<void> write_to_player(int player_id);
+  asio::awaitable<void> read_from_player(int player_id);
   asio::awaitable<void> connect_new_socket(asio::ip::tcp::socket socket);
 
 public:

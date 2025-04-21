@@ -8,7 +8,7 @@ using asio::ip::tcp;
 #include "server.hpp"
 Server server;
 
-asio::awaitable<void> Server::write_updates_to(int player_id) {
+asio::awaitable<void> Server::write_to_player(int player_id) {
   while (true) {
     std::string serialized = std::to_string(player_id) + " " + players.serialize();
     auto [ec, _count] = co_await sockets.at(player_id).async_send(
@@ -24,7 +24,7 @@ asio::awaitable<void> Server::write_updates_to(int player_id) {
   }
 }
 
-asio::awaitable<void> Server::read_updates_from(int player_id) {
+asio::awaitable<void> Server::read_from_player(int player_id) {
   char data[1024];
   while (true) {
     auto [ec, len] = co_await sockets.at(player_id)
@@ -46,7 +46,7 @@ asio::awaitable<void> Server::connect_new_socket(tcp::socket socket) {
   sockets.emplace(player_id, std::move(socket));
 
   co_await (
-    write_updates_to(player_id) || read_updates_from(player_id)
+    write_to_player(player_id) || read_from_player(player_id)
   );
 }
 

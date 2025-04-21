@@ -8,14 +8,15 @@ class Network {
   asio::ip::tcp::socket client_socket;
   bool should_exit = false;
 
-  asio::awaitable<void> writer();
-  asio::awaitable<void> reader();
-  asio::awaitable<void> connect(const asio::ip::tcp::resolver::results_type endpoints);
+private:
+  asio::awaitable<void> write_to_server();
+  asio::awaitable<void> read_from_server();
+  asio::awaitable<void> connect_to_endpoints(const asio::ip::tcp::resolver::results_type endpoints);
 
 public:
   Network();
-  void start(const char* server_address, const char* server_port);
-  SDL_AppResult update();
+  void connect_to_server(const char* server_address, const char* server_port);
+  SDL_AppResult receive_updates();
 };
 
 extern Network network;
