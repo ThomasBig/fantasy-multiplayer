@@ -39,9 +39,9 @@ void Game::update_state_locally() {
   last_update = current_update;
 }
 
-void Game::update_state_from_net(int player_id, std::string deserialized) {
+void Game::update_state_from_net(int player_id, std::string serialized) {
   this->player_id = player_id;
-  players.deserialize(deserialized);
+  players.deserialize(serialized);
 }
 
 void Game::key_press(SDL_Scancode scancode) {
