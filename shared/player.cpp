@@ -23,7 +23,7 @@ void Player::deserialize(std::string serialized) {
   stream >> avatar >> target_x >> target_y;
 }
 
-void Player::update(int delta_ms) {
+void Player::update_position(int delta_ms) {
   if (current_x < target_x) {
     current_x = std::min(current_x + delta_ms * speed, target_x);
   } else if (current_x > target_x) {

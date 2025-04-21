@@ -10,11 +10,10 @@ struct Player {
   float current_y;
   int avatar;
 
+public:
   Player();
   Player(float x, float y, int avatar);
-
   std::string serialize() const;
   void deserialize(std::string serialized);
-
-  void update(int delta_ms);
+  void update_position(int delta_ms);
 };

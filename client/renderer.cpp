@@ -23,11 +23,43 @@ SDL_AppResult Renderer::load_texture(SDL_Texture** texture, const char* filename
   return SDL_APP_CONTINUE;
 }
 
+int Renderer::get_avatars_count() {
+  return avatars;
+}
+
+SDL_AppResult Renderer::init() {
+  SDL_SetAppMetadata("Multiplayer Game", "1.0", "multiplayer-game");
+
+  if (!SDL_Init(SDL_INIT_VIDEO)) {
+    SDL_Log("Couldn't initialize SDL: %s", SDL_GetError());
+    return SDL_APP_FAILURE;
+  }
+
+  if (!SDL_CreateWindowAndRenderer("multiplayer-game",
+      window_width, window_height, 0, &window, &renderer)) {
+    SDL_Log("Couldn't create window/renderer: %s", SDL_GetError());
+    return SDL_APP_FAILURE;
+  }
+
+  if (SDL_AppResult loaded = load_texture(&map_texture, "map"); loaded != SDL_APP_CONTINUE) {
+    return loaded;
+  }
+
+  for (int i = 1; i <= 6; i++) {
+    std::string filename = std::string("char")+std::to_string(i);
+    if (SDL_AppResult loaded = load_texture(&char_textures[i-1], filename.c_str()); loaded != SDL_APP_CONTINUE) {
+      return loaded;
+    }
+  }
+
+  return SDL_APP_CONTINUE;
+}
+
 void Renderer::update() {
   SDL_SetRenderDrawColor(renderer, 0, 0, 0, SDL_ALPHA_OPAQUE);
   SDL_RenderClear(renderer);
 
-  SDL_FRect dst_rect {0, 0, float(WINDOW_WIDTH), float(WINDOW_HEIGHT)};
+  SDL_FRect dst_rect {0, 0, float(window_width), float(window_height)};
   SDL_RenderTexture(renderer, map_texture, NULL, &dst_rect);
 
   for (const auto& [id, player] : game.get_players().data) {
@@ -48,33 +80,6 @@ void Renderer::update() {
   SDL_RenderPresent(renderer);
 }
 
-SDL_AppResult Renderer::init() {
-  SDL_SetAppMetadata("Multiplayer Game", "1.0", "multiplayer-game");
-
-  if (!SDL_Init(SDL_INIT_VIDEO)) {
-    SDL_Log("Couldn't initialize SDL: %s", SDL_GetError());
-    return SDL_APP_FAILURE;
-  }
-
-  if (!SDL_CreateWindowAndRenderer("multiplayer-game",
-      WINDOW_WIDTH, WINDOW_HEIGHT, 0, &window, &renderer)) {
-    SDL_Log("Couldn't create window/renderer: %s", SDL_GetError());
-    return SDL_APP_FAILURE;
-  }
-
-  if (SDL_AppResult loaded = load_texture(&map_texture, "map"); loaded != SDL_APP_CONTINUE) {
-    return loaded;
-  }
-
-  for (int i = 1; i <= 6; i++) {
-    std::string filename = std::string("char")+std::to_string(i);
-    if (SDL_AppResult loaded = load_texture(&char_textures[i-1], filename.c_str()); loaded != SDL_APP_CONTINUE) {
-      return loaded;
-    }
-  }
-
-  return SDL_APP_CONTINUE;
-}
 
 void Renderer::quit() {
   if (map_texture != nullptr) {

@@ -14,8 +14,8 @@ int main(int argc, char* argv[]) {
 
   asio::ip::port_type port;
   std::from_chars(argv[1], argv[1] + std::strlen(argv[1]), port);
-  co_spawn(context, server.listener(port), asio::detached);
-  co_spawn(context, server.game_loop(), asio::detached);
+  asio::co_spawn(context, server.start_listening_on(port), asio::detached);
+  asio::co_spawn(context, server.update_game_state(), asio::detached);
 
   context.run();
   return 0;

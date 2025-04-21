@@ -3,6 +3,7 @@
 using namespace asio::experimental::awaitable_operators;
 using asio::ip::tcp;
 
+#include "renderer.hpp"
 #include "game.hpp"
 Game game;
 
@@ -32,7 +33,7 @@ void Game::update() {
   player.target_y = player.current_y;
 
   for (auto& [_, player] : players.data) {
-    player.update(int(delta_update));
+    player.update_position(int(delta_update));
   }
 
   last_update = current_update;
@@ -58,7 +59,7 @@ void Game::key_press(SDL_Scancode scancode) {
       holding_right = true;
       break;
     case SDL_SCANCODE_C:
-      player.avatar = (player.avatar + 1) % 6;
+      player.avatar = (player.avatar + 1) % renderer.get_avatars_count();
       break;
   }
 }

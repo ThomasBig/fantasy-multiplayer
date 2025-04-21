@@ -19,7 +19,6 @@ public:
   int get_player_id();
   Players const& get_players();
   Player const& get_player();
-
   void update();
   void update_players(int player_id, std::string deserialized);
   void key_press(SDL_Scancode scancode);
