@@ -10,11 +10,13 @@ class Game {
   Player player;
   int player_id = 0;
   Uint64 last_update = 0;
-  int dir_x = 0;
-  int dir_y = 0;
+  bool holding_left = false;
+  bool holding_right = false;
+  bool holding_up = false;
+  bool holding_down = false;
 
 public:
-  Uint64 get_player_id();
+  int get_player_id();
   Players const& get_players();
   Player const& get_player();
 

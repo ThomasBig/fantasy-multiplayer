@@ -13,7 +13,7 @@ using asio::ip::tcp;
 
 Game game;
 
-Uint64 Game::get_player_id() {
+int Game::get_player_id() {
   return player_id;
 }
 
@@ -29,6 +29,9 @@ void Game::update() {
   Uint64 current_update = SDL_GetTicks();
   Uint64 delta_update = current_update - last_update;
 
+  int dir_x = holding_right - holding_left;
+  int dir_y = holding_down - holding_up;
+
   player.current_x += delta_update * Player::speed * dir_x;
   player.current_y += delta_update * Player::speed * dir_y;
   player.target_x = player.current_x;
@@ -41,8 +44,7 @@ void Game::update() {
   last_update = current_update;
 }
 
-void Game::update_players(
-  int player_id, std::string deserialized) {
+void Game::update_players(int player_id, std::string deserialized) {
   this->player_id = player_id;
   players.deserialize(deserialized);
 }
@@ -50,16 +52,16 @@ void Game::update_players(
 void Game::key_press(SDL_Scancode scancode) {
   switch (scancode) {
     case SDL_SCANCODE_W:
-      dir_y = -1;
+      holding_up = true;
       break;
     case SDL_SCANCODE_A:
-      dir_x = -1;
+      holding_left = true;
       break;
     case SDL_SCANCODE_S:
-      dir_y = 1;
+      holding_down = true;
       break;
     case SDL_SCANCODE_D:
-      dir_x = 1;
+      holding_right = true;
       break;
     case SDL_SCANCODE_C:
       player.avatar = (player.avatar + 1) % 6;
@@ -68,6 +70,18 @@ void Game::key_press(SDL_Scancode scancode) {
 }
 
 void Game::key_release(SDL_Scancode scancode) {
-  dir_x = 0;
-  dir_y = 0;
+  switch (scancode) {
+    case SDL_SCANCODE_W:
+      holding_up = false;
+      break;
+    case SDL_SCANCODE_A:
+      holding_left = false;
+      break;
+    case SDL_SCANCODE_S:
+      holding_down = false;
+      break;
+    case SDL_SCANCODE_D:
+      holding_right = false;
+      break;
+  }
 }
