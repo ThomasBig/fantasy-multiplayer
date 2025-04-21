@@ -3,10 +3,7 @@
 using namespace asio::experimental::awaitable_operators;
 using asio::ip::tcp;
 
-#include "renderer.hpp"
 #include "game.hpp"
-Game game;
-
 
 int Game::get_player_id() {
   return player_id;
@@ -39,12 +36,13 @@ void Game::update_state_locally() {
   last_update = current_update;
 }
 
-void Game::update_state_from_net(int player_id, std::string serialized) {
-  this->player_id = player_id;
-  players.deserialize(serialized);
+void Game::update_state_from_net(std::string serialized) {
+  int n = serialized.find_first_of(' ');
+  this->player_id = atoi(serialized.substr(0, n).c_str());
+  players.deserialize(serialized.substr(n+1));
 }
 
-void Game::key_press(SDL_Scancode scancode) {
+void Game::key_press(SDL_Scancode scancode, int avatars_count) {
   switch (scancode) {
     case SDL_SCANCODE_W:
       holding_up = true;
@@ -59,7 +57,7 @@ void Game::key_press(SDL_Scancode scancode) {
       holding_right = true;
       break;
     case SDL_SCANCODE_C:
-      player.avatar = (player.avatar + 1) % renderer.get_avatars_count();
+      player.avatar = (player.avatar + 1) % avatars_count;
       break;
   }
 }

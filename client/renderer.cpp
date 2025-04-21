@@ -1,7 +1,4 @@
-#include "game.hpp"
 #include "renderer.hpp"
-
-Renderer renderer;
 
 SDL_AppResult Renderer::load_texture(SDL_Texture** texture, const char* filename){
   SDL_Surface *surface = NULL;
@@ -55,22 +52,21 @@ SDL_AppResult Renderer::init() {
   return SDL_APP_CONTINUE;
 }
 
-void Renderer::update() {
+void Renderer::update(int player_id, Player const& player, Players const& players) {
   SDL_SetRenderDrawColor(renderer, 0, 0, 0, SDL_ALPHA_OPAQUE);
   SDL_RenderClear(renderer);
 
   SDL_FRect dst_rect {0, 0, float(window_width), float(window_height)};
   SDL_RenderTexture(renderer, map_texture, NULL, &dst_rect);
 
-  for (const auto& [id, player] : game.get_players().data) {
-    if (id != game.get_player_id()) {
+  for (const auto& [id, player] : players.data) {
+    if (id != player_id) {
       SDL_FRect dst_rect {player.current_x, player.current_y, 32.0f, 32.0f};
       int avatar = std::max(std::min(player.avatar, 5), 0); // clamp 0 to 5
       SDL_RenderTexture(renderer, char_textures[avatar], NULL, &dst_rect);
     }
   }
 
-  const Player& player = game.get_player();
   SDL_FRect player_rect{player.current_x, player.current_y, 32.0f, 32.0f};
   SDL_RenderTexture(renderer, char_textures[player.avatar], NULL, &player_rect);
 

@@ -6,13 +6,10 @@ using namespace asio::experimental::awaitable_operators;
 using asio::ip::tcp;
 
 #include "network.hpp"
-#include "game.hpp"
-
-Network network;
 
 asio::awaitable<void> Network::write_to_server() {
   while (true) {
-    std::string serialized = game.get_player().serialize();
+    std::string serialized = serialize();
     auto [ec, _count] = co_await client_socket.async_send(
       asio::buffer(serialized.data(), serialized.length()), asio::as_tuple);
     if (ec) {
@@ -30,10 +27,7 @@ asio::awaitable<void> Network::read_from_server() {
     auto [ec, len] = co_await client_socket.async_receive(
       asio::buffer(data, 1024), asio::as_tuple);
     std::string received(data, len);
-    int n = received.find_first_of(' ');
-    game.update_state_from_net(
-      atoi(received.substr(0, n).c_str()),
-      received.substr(n+1));
+    deserialize(received);
   }
 }
 
@@ -48,7 +42,8 @@ asio::awaitable<void> Network::connect_to_endpoints(const tcp::resolver::results
   should_exit = true;
 }
 
-Network::Network() : client_socket(context) {}
+Network::Network(SerializeFn serialize, DeserializeFn deserialize)
+  : serialize(serialize), deserialize(deserialize), client_socket(context) {}
 
 void Network::connect_to_server(const char* server_address, const char* server_port) {
   tcp::resolver resolver(context);

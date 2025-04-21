@@ -1,6 +1,8 @@
 #pragma once
 
 #include <SDL3/SDL.h>
+#include "player.hpp"
+#include "players.hpp"
 
 class Renderer {
   static constexpr int window_width = 960;
@@ -18,8 +20,6 @@ private:
 public:
   int get_avatars_count();
   SDL_AppResult init();
-  void update();
+  void update(int player_id, Player const& player, Players const& players);
   void quit();
 };
-
-extern Renderer renderer;
