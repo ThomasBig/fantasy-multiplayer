@@ -252,22 +252,116 @@ a mobile hotspot from a different ISP.*
 
 ---
 
+# Folder structure
+```c
+project
+  |-- client
+    |-- main
+    |-- game
+    |-- network
+    |-- renderer
+  |-- server
+    |-- main
+    |-- server
+  |-- shared
+    |-- player
+    |-- players
+```
+
+
+---
+
 # Big picture
 * Client executable is actual game you send to players with graphics, keyboard handling
-* Server executable is run only on server, for us without graphics and without any interaction
+* Server executable is run only on dedicated server, without graphics and without interaction
 * Shared files contain files that can both client and server use
 
 ---
 
-# Client
-* Main file that is used to create the executable
-* Game file which contains game logic
-* Network file which contains networking logic
-* Renderer file which contains graphics
+# Shared files
+![bg right:33%](https://picsum.photos/720?image=28)
+* Player structure that contains player information
+* Players structure that contains multiple players in a hashmap
 
 ---
 
-# Client Main
+# Player attributes
+![bg right:33%](https://picsum.photos/720?image=28)
+* constant speed
+* current position
+* target position
+* current avatar
+
+---
+
+# Player structure
+```c++
+struct Player {
+  static constexpr float speed = 0.1f;
+  float target_x;
+  float target_y;
+  float current_x;
+  float current_y;
+  int avatar;
+}
+```
+
+---
+
+# Player methods
+![bg right:33%](https://picsum.photos/720?image=28)
+* Constructor with and without parameters
+* Serialization, deserialization
+* Position update (moves to target)
+* Usage: TODO
+
+---
+# Player methods
+
+```c++
+struct Player {
+// ...
+  Player();
+  Player(float x, float y, int avatar);
+  std::string serialize() const;
+  void deserialize(std::string serialized);
+  void update_position(int delta_ms);
+};
+```
+---
+
+# Players
+![bg right:33%](https://picsum.photos/720?image=28)
+* wrapper over hashmap for player_id -> player
+* serialization, deserialization
+* usage: TODO
+
+---
+# Players
+```c++
+struct Players {
+  std::unordered_map<int, Player> data;
+
+public:
+  std::string serialize() const;
+  void deserialize(std::string serialized);
+};
+```
+
+---
+
+
+# Client
+![bg right:33%](https://picsum.photos/720?image=25)
+* Main creates the executable, offloads most of the work to independent modules
+* **Game** module handles only game logic and serialization
+* **Network** module handles only networking logic
+* **Renderer** module handles only graphics
+
+---
+
+# Main
+![bg right:33%](https://picsum.photos/720?image=25)
 * Creates the application
 * Handles key presses
 * Updates graphics and receives network updates
@@ -275,7 +369,7 @@ a mobile hotspot from a different ISP.*
 
 ---
 
-# Client Main
+# Main
 ```cpp
 #define SDL_MAIN_USE_CALLBACKS 1
 #include <SDL3/SDL.h>
@@ -289,87 +383,161 @@ void SDL_AppQuit(void *appstate, SDL_AppResult result);
 
 ---
 
-# Client Game
-* Moves my local player across the screen
+# Game
+![bg right:33%](https://picsum.photos/720?image=25)
+* Moves my player across the screen
 * Updates all players based on serialized string
 * Updates my player when key is pressed
 * Updates my player when key is released
 
 ---
 
-# Client Game
+# Game
 ```c++
 class Game {
-  //...
+  // ...
 public:
+  int get_player_id();
+  Players const& get_players();
+  Player const& get_player();
   void update_state_locally();
-  void update_state_from_net(int player_id, std::string serialized);
-  void key_press(SDL_Scancode scancode);
+  std::string serialize();
+  void deserialize(std::string serialized);
+  void key_press(SDL_Scancode scancode, int avatars_count);
   void key_release(SDL_Scancode scancode);
-};
-
-extern Game game;
+}
 ```
 
 ---
 
+# Renderer
+![bg right:33%](https://picsum.photos/720?image=25)
 * Loads all textures to memory
-* Draws the textures/sprites on positions
+* Draws the textures (sprites) on players positions
+* Unloads all textures when closing the game
 
 ---
 
-# Client Renderer
+# Renderer
 
 ```c++
 class Renderer {
-  static constexpr int window_width = 960;
-  static constexpr int window_height = 736;
-  static constexpr int avatars = 6;
-
+// ...
 public:
+  int get_avatars_count();
   SDL_AppResult init();
-  void update();
+  void update(int player_id,
+    Player const& player, Players const& players);
   void quit();
 };
 ```
 
 ---
 
-# Client Network
-* writes updates to server
-* reads server updates
+# Network public methods
+![bg right:33%](https://picsum.photos/720?image=25)
 * connects to server address and server port
 * polls server updates
 
 ---
 
-
-
 ```c++
+using SerializeFn = std::function<std::string()>;
+using DeserializeFn = std::function<void(std::string)>;
+
 class Network {
-  asio::io_context context;
-  asio::ip::tcp::socket client_socket;
-  bool should_exit = false;
-
-private:
-  asio::awaitable<void> write_to_server();
-  asio::awaitable<void> read_from_server();
-
+// ...
 public:
   Network();
-  void connect_to_server(const char* server_address, const char* server_port);
+  void connect_to_server(
+    const char* server_address,
+    const char* server_port,
+    SerializeFn serialize,
+    DeserializeFn deserialize);
   SDL_AppResult receive_updates();
 };
 ```
 
 ---
+# Network private methods
+![bg right:33%](https://picsum.photos/720?image=25)
+* connects to resolved endpoints
+* writes updates to server
+* reads server updates
+
+---
+# Network private methods
+```c++
+class Network {
+  static constexpr int client_update_ticks = 1; // 1 update per second
+  asio::io_context context;
+  asio::ip::tcp::socket client_socket;
+  SerializeFn serialize;
+  DeserializeFn deserialize;
+  bool should_exit = false;
+
+private:
+  asio::awaitable<void> write_to_server();
+  asio::awaitable<void> read_from_server();
+  asio::awaitable<void> connect_to_endpoints(
+    const asio::ip::tcp::resolver::results_type endpoints);
+}
+```
+
+---
 
 # Server
+![bg right:33%](https://picsum.photos/720?image=29)
 * Main file that is used to create the executable
 * Server file which contains networking logic
 
 ---
 
+# Server public methods
+![bg right:33%](https://picsum.photos/720?image=29)
+* start listening
+* update game state
+
+---
+
+# Server public methods
+```c++
+class Server {
+// ...
+public:
+  asio::awaitable<void> start_listening_on(asio::ip::port_type port);
+  asio::awaitable<void> update_game_state();
+};
+```
+
+---
+# Server private methods
+![bg right:33%](https://picsum.photos/720?image=29)
+* connecting a new socket
+* writing an update to player
+* receiving an update from player
+
+---
+
+# Server private methods
+
+
+```c++
+class Server {
+  static constexpr int server_update_ticks = 10; // 10 updates per second
+  Players players;
+  int last_used_id = 0;
+  std::unordered_map<int, asio::ip::tcp::socket> sockets;
+
+private:
+  asio::awaitable<void> write_to_player(int player_id);
+  asio::awaitable<void> read_from_player(int player_id);
+  asio::awaitable<void> connect_new_socket(asio::ip::tcp::socket socket);
+}
+```
+
+---
+# Server messages
 ```c
 ...
 Wrote to player 3: 3 0 2 144 442 1 3 632 521 2 0 240 135 3 0 330 318
@@ -398,4 +566,3 @@ Wrote to player 3: your_id (player_id player_avatar player_x player_y)+
 * player 2: `2 240 135`
 * player 3: `1 330 318`
 
-----
