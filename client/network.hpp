@@ -3,14 +3,15 @@
 #include <asio.hpp>
 #include <SDL3/SDL.h>
 
-using DeserializeFn = std::function<void(std::string)>;
 using SerializeFn = std::function<std::string()>;
+using DeserializeFn = std::function<void(std::string)>;
 
 class Network {
+  static constexpr int client_update_ticks = 1; // 1 update per second
   asio::io_context context;
   asio::ip::tcp::socket client_socket;
-  DeserializeFn deserialize;
   SerializeFn serialize;
+  DeserializeFn deserialize;
   bool should_exit = false;
 
 private:

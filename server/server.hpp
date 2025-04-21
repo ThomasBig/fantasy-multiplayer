@@ -5,7 +5,7 @@
 #include "players.hpp"
 
 class Server {
-  static constexpr int server_update_ticks = 100;
+  static constexpr int server_update_ticks = 10; // 10 updates per second
   Players players;
   int last_used_id = 0;
   std::unordered_map<int, asio::ip::tcp::socket> sockets;
@@ -19,5 +19,3 @@ public:
   asio::awaitable<void> start_listening_on(asio::ip::port_type port);
   asio::awaitable<void> update_game_state();
 };
-
-extern Server server;

@@ -69,7 +69,9 @@ asio::awaitable<void> Server::update_game_state() {
     for (auto& [id, player] : players.data) {
       player.update_position(server_update_ticks);
     }
-    asio::steady_timer timer(co_await asio::this_coro::executor, asio::chrono::milliseconds(server_update_ticks));
+    asio::steady_timer timer(
+      co_await asio::this_coro::executor,
+      asio::chrono::milliseconds(1000/server_update_ticks));
     co_await timer.async_wait(asio::use_awaitable);
   }
 }

@@ -16,7 +16,7 @@ asio::awaitable<void> Network::write_to_server() {
       std::cout << "Could not send the message: " << ec.message() << "\n";
       co_return;
     }
-    asio::steady_timer timer(context, asio::chrono::seconds(1));
+    asio::steady_timer timer(context, asio::chrono::milliseconds(1000/client_update_ticks));
     co_await timer.async_wait(asio::use_awaitable);
   }
 }
