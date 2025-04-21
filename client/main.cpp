@@ -1,0 +1,57 @@
+// standard libraries
+#include <iostream>
+// rendering using sdl3
+#define SDL_MAIN_USE_CALLBACKS 1
+#include <SDL3/SDL.h>
+#include <SDL3/SDL_main.h>
+// networking using asio
+#include <asio.hpp>
+#include <asio/experimental/awaitable_operators.hpp>
+using namespace asio::experimental::awaitable_operators;
+using asio::ip::tcp;
+
+#include "game.hpp"
+#include "network.hpp"
+#include "renderer.hpp"
+
+SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[]) {
+  if (argc < 3) {
+    std::cout << "Usage: client.exe address port\n";
+    return SDL_APP_FAILURE;
+  }
+
+  if (SDL_AppResult result = renderer.init(); result != SDL_APP_CONTINUE) {
+    return result;
+  }
+
+  network.start(argv[1], argv[2]);
+  return SDL_APP_CONTINUE;
+}
+
+SDL_AppResult SDL_AppEvent(void *appstate, SDL_Event *event) {
+  if (event->type == SDL_EVENT_QUIT) {
+    return SDL_APP_SUCCESS;
+  }
+
+  if (event->type == SDL_EVENT_KEY_DOWN) {
+    game.key_press(event->key.scancode);
+  }
+  else if (event->type == SDL_EVENT_KEY_UP) {
+    game.key_release(event->key.scancode);
+  }
+
+  return SDL_APP_CONTINUE;
+}
+
+SDL_AppResult SDL_AppIterate(void *appstate) {
+  game.update();
+  renderer.update();
+  if (SDL_AppResult update = network.update(); update != SDL_APP_CONTINUE) {
+    return update;
+  }
+  return SDL_APP_CONTINUE;
+}
+
+void SDL_AppQuit(void *appstate, SDL_AppResult result) {
+  renderer.quit();
+}

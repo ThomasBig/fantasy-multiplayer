@@ -6,14 +6,11 @@
 #include <asio/experimental/awaitable_operators.hpp>
 using namespace asio::experimental::awaitable_operators;
 using asio::ip::tcp;
-// shared lib
-#include "shared.hpp"
 
-Players players;
-int last_id = 0;
-std::unordered_map<int, tcp::socket> sockets;
+#include "server.hpp"
+Server server;
 
-asio::awaitable<void> writer(int player_id) {
+asio::awaitable<void> Server::writer(int player_id) {
   while (socket != nullptr) {
     std::string serialized = std::to_string(player_id) + " " + players.serialize();
     auto [ec, _count] = co_await sockets.at(player_id).async_send(asio::buffer(serialized.data(), serialized.length()), asio::as_tuple);
@@ -28,7 +25,7 @@ asio::awaitable<void> writer(int player_id) {
   }
 }
 
-asio::awaitable<void> reader(int player_id) {
+asio::awaitable<void> Server::reader(int player_id) {
   char data[1024];
   while (true) {
     auto [ec, len] = co_await sockets.at(player_id).async_receive(asio::buffer(data, 1024), asio::as_tuple);
@@ -41,7 +38,7 @@ asio::awaitable<void> reader(int player_id) {
   }
 }
 
-asio::awaitable<void> connect(tcp::socket socket) {
+asio::awaitable<void> Server::connect(tcp::socket socket) {
   std::cout << "There is a new connection from "<< socket.remote_endpoint() << "!\n";
 
   int player_id = last_id++;
@@ -53,7 +50,7 @@ asio::awaitable<void> connect(tcp::socket socket) {
   );
 }
 
-asio::awaitable<void> listener(asio::ip::port_type port) {
+asio::awaitable<void> Server::listener(asio::ip::port_type port) {
   auto executor = co_await asio::this_coro::executor;
   std::cout << "Staring a server on port " << port << "...\n";
   tcp::acceptor acceptor(executor, {tcp::v4(), port});
@@ -67,7 +64,7 @@ asio::awaitable<void> listener(asio::ip::port_type port) {
   }
 }
 
-asio::awaitable<void> game_loop() {
+asio::awaitable<void> Server::game_loop() {
   int delta_ms = 100;
   while (true) {
     for (auto& [id, player] : players.data) {
@@ -76,23 +73,4 @@ asio::awaitable<void> game_loop() {
     asio::steady_timer timer(co_await asio::this_coro::executor, asio::chrono::milliseconds(delta_ms));
     co_await timer.async_wait(asio::use_awaitable);
   }
-}
-
-int main(int argc, char* argv[]) {
-  if (argc < 2) {
-    std::cout << "Usage: server.exe port\n";
-    return 0;
-  }
-
-  asio::io_context context;
-  asio::signal_set signals(context, SIGINT, SIGTERM);
-  signals.async_wait([&](asio::error_code _ec, int _signal){ context.stop(); });
-
-  asio::ip::port_type port;
-  std::from_chars(argv[1], argv[1] + std::strlen(argv[1]), port);
-  co_spawn(context, listener(port), asio::detached);
-  co_spawn(context, game_loop(), asio::detached);
-
-  context.run();
-  return 0;
 }

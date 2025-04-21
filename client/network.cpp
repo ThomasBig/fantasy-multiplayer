@@ -1,0 +1,70 @@
+#include <iostream>
+
+#include <SDL3/SDL.h>
+
+#include "player.hpp"
+#include "players.hpp"
+#include "network.hpp"
+
+#include <asio.hpp>
+#include <asio/experimental/awaitable_operators.hpp>
+using namespace asio::experimental::awaitable_operators;
+using asio::ip::tcp;
+
+#include "game.hpp"
+
+Network network;
+
+asio::awaitable<void> Network::writer() {
+  while (true) {
+    std::string serialized = game.get_player().serialize();
+    auto [ec, _count] = co_await client_socket.async_send(
+      asio::buffer(serialized.data(), serialized.length()), asio::as_tuple);
+    if (ec) {
+      std::cout << "Could not send the message: " << ec.message() << "\n";
+      co_return;
+    }
+    asio::steady_timer timer(context, asio::chrono::seconds(1));
+    co_await timer.async_wait(asio::use_awaitable);
+  }
+}
+
+asio::awaitable<void> Network::reader() {
+  char data[1024];
+  while (true) {
+    auto [ec, len] = co_await client_socket.async_receive(
+      asio::buffer(data, 1024), asio::as_tuple);
+    std::string received(data, len);
+    int n = received.find_first_of(' ');
+    game.update_players(
+      atoi(received.substr(0, n).c_str()),
+      received.substr(n+1));
+  }
+}
+
+asio::awaitable<void> Network::connect(const tcp::resolver::results_type endpoints) {
+  auto [error_code, endpoint] = co_await asio::async_connect(
+    client_socket, endpoints, asio::as_tuple);
+  if (error_code) {
+    std::cout << "Could not connect: " << error_code.message() << "\n";
+    co_return;
+  }
+  co_await (writer() || reader());
+  should_exit = true;
+}
+
+Network::Network() : client_socket(context) {}
+
+void Network::start(const char* server_address, const char* server_port) {
+  tcp::resolver resolver(context);
+  auto endpoints = resolver.resolve(server_address, server_port);
+  asio::co_spawn(context, connect(std::move(endpoints)), asio::detached);
+}
+
+SDL_AppResult Network::update() {
+  if (should_exit) {
+    return SDL_APP_SUCCESS;
+  }
+  context.poll();
+  return SDL_APP_CONTINUE;
+}

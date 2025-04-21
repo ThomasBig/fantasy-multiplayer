@@ -1,6 +1,6 @@
 ---
 marp: true
-class: invert
+;class: invert
 ---
 
 # Let’s Make an Multiplayer Game Without an Engine
