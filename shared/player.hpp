@@ -1,5 +1,7 @@
 #pragma once
 
+#include <string>
+
 struct Player {
   static constexpr float speed = 0.1f;
   float target_x;

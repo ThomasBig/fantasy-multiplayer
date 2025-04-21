@@ -1,7 +1,5 @@
 #pragma once
 
-#include <iostream>
-
 #include <asio.hpp>
 #include <SDL3/SDL.h>
 

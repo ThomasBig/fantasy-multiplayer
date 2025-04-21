@@ -2,7 +2,7 @@
 
 #include <unordered_map>
 #include <asio.hpp>
-#include "../shared/players.hpp"
+#include "players.hpp"
 
 class Server {
   Players players;
@@ -11,13 +11,9 @@ class Server {
 
 public:
   asio::awaitable<void> writer(int player_id);
-
   asio::awaitable<void> reader(int player_id);
-
   asio::awaitable<void> connect(asio::ip::tcp::socket socket);
-
   asio::awaitable<void> listener(asio::ip::port_type port);
-
   asio::awaitable<void> game_loop();
 };
 

@@ -1,19 +1,7 @@
-#include <iostream>
-
-#include <SDL3/SDL.h>
-
-#include "player.hpp"
-#include "players.hpp"
-#include "renderer.hpp"
 #include "game.hpp"
-
-#include <asio.hpp>
-#include <asio/experimental/awaitable_operators.hpp>
-using namespace asio::experimental::awaitable_operators;
-using asio::ip::tcp;
+#include "renderer.hpp"
 
 Renderer renderer;
-
 
 SDL_AppResult Renderer::load_texture(SDL_Texture** texture, const char* filename){
   SDL_Surface *surface = NULL;

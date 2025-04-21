@@ -1,14 +1,6 @@
-// standard libraries
-#include <iostream>
-// rendering using sdl3
 #define SDL_MAIN_USE_CALLBACKS 1
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_main.h>
-// networking using asio
-#include <asio.hpp>
-#include <asio/experimental/awaitable_operators.hpp>
-using namespace asio::experimental::awaitable_operators;
-using asio::ip::tcp;
 
 #include "game.hpp"
 #include "network.hpp"
@@ -16,7 +8,7 @@ using asio::ip::tcp;
 
 SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[]) {
   if (argc < 3) {
-    std::cout << "Usage: client.exe address port\n";
+    SDL_Log("Usage: client.exe address port");
     return SDL_APP_FAILURE;
   }
 

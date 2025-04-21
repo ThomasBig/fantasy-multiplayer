@@ -1,16 +1,11 @@
 #include <iostream>
 
-#include <SDL3/SDL.h>
-
-#include "player.hpp"
-#include "players.hpp"
-#include "network.hpp"
-
 #include <asio.hpp>
 #include <asio/experimental/awaitable_operators.hpp>
 using namespace asio::experimental::awaitable_operators;
 using asio::ip::tcp;
 
+#include "network.hpp"
 #include "game.hpp"
 
 Network network;
