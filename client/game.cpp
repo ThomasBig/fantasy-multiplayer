@@ -36,7 +36,11 @@ void Game::update_state_locally() {
   last_update = current_update;
 }
 
-void Game::update_state_from_net(std::string serialized) {
+std::string Game::serialize() {
+  return player.serialize();
+}
+
+void Game::deserialize(std::string serialized) {
   int n = serialized.find_first_of(' ');
   this->player_id = atoi(serialized.substr(0, n).c_str());
   players.deserialize(serialized.substr(n+1));

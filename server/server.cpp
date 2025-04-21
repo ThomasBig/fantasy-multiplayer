@@ -6,7 +6,6 @@ using namespace asio::experimental::awaitable_operators;
 using asio::ip::tcp;
 
 #include "server.hpp"
-Server server;
 
 asio::awaitable<void> Server::write_to_player(int player_id) {
   while (true) {

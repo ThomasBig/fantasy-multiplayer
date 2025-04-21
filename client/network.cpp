@@ -42,10 +42,11 @@ asio::awaitable<void> Network::connect_to_endpoints(const tcp::resolver::results
   should_exit = true;
 }
 
-Network::Network(SerializeFn serialize, DeserializeFn deserialize)
-  : serialize(serialize), deserialize(deserialize), client_socket(context) {}
+Network::Network() : client_socket(context) {}
 
-void Network::connect_to_server(const char* server_address, const char* server_port) {
+void Network::connect_to_server(const char* server_address, const char* server_port, SerializeFn serialize, DeserializeFn deserialize) {
+  this->serialize = serialize;
+  this->deserialize = deserialize;
   tcp::resolver resolver(context);
   auto endpoints = resolver.resolve(server_address, server_port);
   asio::co_spawn(context, connect_to_endpoints(std::move(endpoints)), asio::detached);

@@ -20,7 +20,8 @@ public:
   Players const& get_players();
   Player const& get_player();
   void update_state_locally();
-  void update_state_from_net(std::string serialized);
+  std::string serialize();
+  void deserialize(std::string serialized);
   void key_press(SDL_Scancode scancode, int avatars_count);
   void key_release(SDL_Scancode scancode);
 };

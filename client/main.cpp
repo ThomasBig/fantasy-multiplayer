@@ -8,10 +8,7 @@
 
 Game game;
 Renderer renderer;
-Network network(
-  []{return game.get_player().serialize();},
-  [](std::string serialized){return game.update_state_from_net(serialized);}
-);
+Network network;
 
 SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[]) {
   if (argc < 3) {
@@ -23,7 +20,13 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[]) {
     return result;
   }
 
-  network.connect_to_server(argv[1], argv[2]);
+  network.connect_to_server(
+    argv[1],
+    argv[2],
+    []{ return game.serialize(); },
+    [](std::string serialized){ return game.deserialize(serialized); }
+  );
+
   return SDL_APP_CONTINUE;
 }
 
