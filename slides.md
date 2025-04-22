@@ -1,25 +1,31 @@
 ---
 marp: true
 ;class: invert
+paginate: true
 ---
 
 # Let’s Make an Multiplayer Game Without an Engine
+*Tomáš Janoušek, Game Access 2025*
 
-... WHAT?
+---
+
+# Motivation
+* University Teacher: *"Do not bother making multiplayer games, **they are too hard**"*
+* Colleague: *"I tried making a multiplayer game, but it didn't turned out and I do not want to make **any multiplayer game again**"*
 
 ---
 
 ![bg](game.png)
 
-
 ---
 
-# Premise
+# About
 
-* We will learn how to make a simple multiplayer game
-* We will use C++20 coroutines and ASIO library for basic networking objects
-* We will NOT make production ready code
-* We will make a functional and understandable PROTOTYPE
+* Making multiplayer games doesn't have to be hard and can be fun
+* We will learn C++20 coroutines and basics of ASIO networking library
+* We will learn how to design a simple multiplayer game on real example
+* In the end of presentation, I will share the functional code with you so
+you can you to start making your very own game right after the presentation
 
 ---
 
@@ -27,11 +33,30 @@ marp: true
 * Tomáš Janoušek
 * Work Experience: Arma 4, Mafia: The Old Country, TopSpin 2K25
 * Networking Experience: Master's thesis
-* You don't need any of it to start
+* You don't need any of it
 
 ---
 
-# Recommended Tools
+# Two-Part Structure
+* Networking coding (bottom-up)
+* Designing a multiplayer game (top-down)
+
+---
+
+# Coding
+*We will connect our application to server. On server, we will listen for new connections.*
+
+---
+
+# Outline
+* Tools
+* Callbacks
+* Coroutines
+* Testing
+
+---
+
+# Tools
 * VS Code
 * C++20
 * CMake
@@ -237,6 +262,12 @@ a mobile hotspot from a different ISP.*
 * Other players then connect to that network.
 * Then, all can communicate freely as they are on the same network, meaning one player can run the server and others join it.
 
+---
+
+# Going forward
+* Try to send some message from client to server (hint use socket.async_send)
+* Try to receive message from client on server (hint use socket.async_receive)
+* Try to send message from server to client and receive it
 
 ---
 
@@ -249,6 +280,174 @@ a mobile hotspot from a different ISP.*
 ---
 
 ![bg](game.png)
+
+---
+
+# Designing game
+*How to make a new multiplayer game, top-down*
+
+---
+
+# Requirements
+* Simple
+* Graphical
+* 4 players at least
+* Reacts to player in realtime
+
+---
+
+# Game
+* 2D roleplaying game
+* you control one character
+* move around the map using keyboard keys
+* switch your avatar
+
+---
+
+# Outline
+* Graphics
+* Serialization
+* Network
+
+---
+
+# Graphics outline
+* Assets
+* Graphics library
+* Top-level code
+
+---
+
+# Assets
+* AI? No, we are not Call of Duty, we shall use works from actual artists
+* Hand-drawn: I'm horrible and slow painter
+* Paying someone: I'm poor and making just a prototype
+* Free: great for fast prototyping opengameart.org, kenney.org
+
+---
+
+# Graphics library
+* GLFW (OpenGL) - possible, but painful
+* SFML - older, includes its own networking
+* Raylib - simple to use, includes 3D graphics
+* SDL3 - industry standard, lightweight
+
+---
+
+# SDL Callbacks Instead of Main
+* SDL_AppInit - load all textures
+* SDL_AppIterate - draw textures on screen
+* SDL_KeyEvent - handle keyboard
+* SDL_AppQuit - destroy textures
+
+---
+
+# Network outline
+* Networking libraries
+* Serialization, deserialization
+* Sending and receiving message
+* Dependency injection
+
+---
+
+# Network libraries
+* Hand-written - possible, but not easily cross platform
+* Steam sockets, Yojimbo, GGPO, ... - high-level game networking libraries
+* Asio - cross platform, not game related, low level
+
+---
+
+# Serialization
+* Process of converting game state/update to a single string
+* For client, useful for sending update to server,
+* For server, useful for sending server state
+* The less characters/bytes we use the better
+
+---
+
+# Client serialization
+* On player we serialize only our player info since we can't affect other players
+* We will use characters instead of raw bytes for simplicity
+* Format: `avatar x_position y_position`
+* We can use string streams to convert integers to string
+
+---
+
+# Server serialization
+* On server we will send regular updates of all players to client
+* We need need to serialize everyone
+* Each player should have some unique identifier, avatar and position infos.
+* Before sending, we also need to add player's id to let them know who is them
+* Format `my_player_id (player_id avatar x_position y_position)+`
+
+---
+
+# Deserialization
+* For client, process of converting a single string to a whole game
+* For server, converting player's update string
+
+---
+
+# Client deserialization
+* Format `my_player_id (player_id avatar x_position y_position)+`
+* we can use string streams to read integers from string
+* On server, we need to deserialiaze only one player at the time
+
+---
+
+# Sending a message
+* socket.async_send(buffer, token)
+* buffer - string of characters to send (for us), our serialized string
+* token - how is function called, asio::as_tuple
+
+---
+
+# Receiving a message
+* socket.async_receive(buffer, token)
+* buffer - string where to store obtained chars
+* token - how is function called, asio::as_tuple
+
+---
+
+# Decoupling
+* Network object would really like to update game state, once we get an update from server it is tempting to move all players in the class itself.
+* The problem is then how much functionality should Network do, should it also Draw those objects? It will be god object quite quickly.
+* We will rather provide SerializationFn, DeserialiazeFn to the Network object and handle deserialization and serialization elsewhere.
+* Doing so, we can focus solely on sending strings to server and receiving them.
+
+---
+
+# Responsibilities
+* Main: delegates functionality to individual modules
+* Game: contains my player and other players data, handles serialization and deserialization
+* Renderer: when given player data, it draws players on screen
+* Network: when given serialization functions, will handle network traffic
+
+---
+
+# Server
+* headless, i.e., doesn't draw any graphics
+* dedicated, run as a separate executable
+* autoritative, i.e., says what is the game state and clients must listen
+* predictable, i.e, client should be able to predict what server sends them with reasonable accuracy to do local prediction
+
+---
+
+# TCP or UDP?
+* reliability: all messages send will reach its destination
+* order: if there are two messages send after each other, they will be received after each other
+* tcp: reliable, ordered.
+* udp: unreliable, not ordered
+* you can code abstraction over udp to have reliability and/or order, but not other way round.
+* However, we will use tcp to skip coding this abstraction layer
+
+---
+
+# Server update
+* It is tempting to move players as soon as we receive their message
+* However, we receive messages in random intervals and maybe we receive more updates from one player than the other
+* Therefore, we only change player's target destination (where they want to move) when we receive their updates
+* Then, in our own update function which is run independantly, we move all players towards their target destination with a constant speed (it will not help you if you spam your target destination more often, you will move there still with the same speed)
 
 ---
 
@@ -267,302 +466,3 @@ project
     |-- player
     |-- players
 ```
-
-
----
-
-# Big picture
-* Client executable is actual game you send to players with graphics, keyboard handling
-* Server executable is run only on dedicated server, without graphics and without interaction
-* Shared files contain files that can both client and server use
-
----
-
-# Shared files
-![bg right:33%](https://picsum.photos/720?image=28)
-* Player structure that contains player information
-* Players structure that contains multiple players in a hashmap
-
----
-
-# Player attributes
-![bg right:33%](https://picsum.photos/720?image=28)
-* constant speed
-* current position
-* target position
-* current avatar
-
----
-
-# Player structure
-```c++
-struct Player {
-  static constexpr float speed = 0.1f;
-  float target_x;
-  float target_y;
-  float current_x;
-  float current_y;
-  int avatar;
-}
-```
-
----
-
-# Player methods
-![bg right:33%](https://picsum.photos/720?image=28)
-* Constructor with and without parameters
-* Serialization, deserialization
-* Position update (moves to target)
-* Usage: TODO
-
----
-# Player methods
-
-```c++
-struct Player {
-// ...
-  Player();
-  Player(float x, float y, int avatar);
-  std::string serialize() const;
-  void deserialize(std::string serialized);
-  void update_position(int delta_ms);
-};
-```
----
-
-# Players
-![bg right:33%](https://picsum.photos/720?image=28)
-* wrapper over hashmap for player_id -> player
-* serialization, deserialization
-* usage: TODO
-
----
-# Players
-```c++
-struct Players {
-  std::unordered_map<int, Player> data;
-
-public:
-  std::string serialize() const;
-  void deserialize(std::string serialized);
-};
-```
-
----
-
-
-# Client
-![bg right:33%](https://picsum.photos/720?image=25)
-* Main creates the executable, offloads most of the work to independent modules
-* **Game** module handles only game logic and serialization
-* **Network** module handles only networking logic
-* **Renderer** module handles only graphics
-
----
-
-# Main
-![bg right:33%](https://picsum.photos/720?image=25)
-* Creates the application
-* Handles key presses
-* Updates graphics and receives network updates
-* Destroys the application when closed
-
----
-
-# Main
-```cpp
-#define SDL_MAIN_USE_CALLBACKS 1
-#include <SDL3/SDL.h>
-#include <SDL3/SDL_main.h>
-
-SDL_AppResult SDL_AppInit(void **appstate, int argc, char *argv[]);
-SDL_AppResult SDL_AppEvent(void *appstate, SDL_Event *event);
-SDL_AppResult SDL_AppIterate(void *appstate);
-void SDL_AppQuit(void *appstate, SDL_AppResult result);
-```
-
----
-
-# Game
-![bg right:33%](https://picsum.photos/720?image=25)
-* Moves my player across the screen
-* Updates all players based on serialized string
-* Updates my player when key is pressed
-* Updates my player when key is released
-
----
-
-# Game
-```c++
-class Game {
-  // ...
-public:
-  int get_player_id();
-  Players const& get_players();
-  Player const& get_player();
-  void update_state_locally();
-  std::string serialize();
-  void deserialize(std::string serialized);
-  void key_press(SDL_Scancode scancode, int avatars_count);
-  void key_release(SDL_Scancode scancode);
-}
-```
-
----
-
-# Renderer
-![bg right:33%](https://picsum.photos/720?image=25)
-* Loads all textures to memory
-* Draws the textures (sprites) on players positions
-* Unloads all textures when closing the game
-
----
-
-# Renderer
-
-```c++
-class Renderer {
-// ...
-public:
-  int get_avatars_count();
-  SDL_AppResult init();
-  void update(int player_id,
-    Player const& player, Players const& players);
-  void quit();
-};
-```
-
----
-
-# Network public methods
-![bg right:33%](https://picsum.photos/720?image=25)
-* connects to server address and server port
-* polls server updates
-
----
-
-```c++
-using SerializeFn = std::function<std::string()>;
-using DeserializeFn = std::function<void(std::string)>;
-
-class Network {
-// ...
-public:
-  Network();
-  void connect_to_server(
-    const char* server_address,
-    const char* server_port,
-    SerializeFn serialize,
-    DeserializeFn deserialize);
-  SDL_AppResult receive_updates();
-};
-```
-
----
-# Network private methods
-![bg right:33%](https://picsum.photos/720?image=25)
-* connects to resolved endpoints
-* writes updates to server
-* reads server updates
-
----
-# Network private methods
-```c++
-class Network {
-  static constexpr int client_update_ticks = 1; // 1 update per second
-  asio::io_context context;
-  asio::ip::tcp::socket client_socket;
-  SerializeFn serialize;
-  DeserializeFn deserialize;
-  bool should_exit = false;
-
-private:
-  asio::awaitable<void> write_to_server();
-  asio::awaitable<void> read_from_server();
-  asio::awaitable<void> connect_to_endpoints(
-    const asio::ip::tcp::resolver::results_type endpoints);
-}
-```
-
----
-
-# Server
-![bg right:33%](https://picsum.photos/720?image=29)
-* Main file that is used to create the executable
-* Server file which contains networking logic
-
----
-
-# Server public methods
-![bg right:33%](https://picsum.photos/720?image=29)
-* start listening
-* update game state
-
----
-
-# Server public methods
-```c++
-class Server {
-// ...
-public:
-  asio::awaitable<void> start_listening_on(asio::ip::port_type port);
-  asio::awaitable<void> update_game_state();
-};
-```
-
----
-# Server private methods
-![bg right:33%](https://picsum.photos/720?image=29)
-* connecting a new socket
-* writing an update to player
-* receiving an update from player
-
----
-
-# Server private methods
-
-
-```c++
-class Server {
-  static constexpr int server_update_ticks = 10; // 10 updates per second
-  Players players;
-  int last_used_id = 0;
-  std::unordered_map<int, asio::ip::tcp::socket> sockets;
-
-private:
-  asio::awaitable<void> write_to_player(int player_id);
-  asio::awaitable<void> read_from_player(int player_id);
-  asio::awaitable<void> connect_new_socket(asio::ip::tcp::socket socket);
-}
-```
-
----
-# Server messages
-```c
-...
-Wrote to player 3: 3 0 2 144 442 1 3 632 521 2 0 240 135 3 0 330 318
-Wrote to player 1: 1 0 2 144 442 1 3 632 521 2 0 240 135 3 0 330 318
-Wrote to player 2: 2 0 2 144 442 1 3 632 521 2 0 240 135 3 0 330 318
-Wrote to player 0: 0 0 2 144 442 1 3 632 521 2 0 240 135 3 0 330 318
-Wrote to player 3: 3 0 2 144 442 1 3 632 521 2 0 240 135 3 0 330 318
-Wrote to player 1: 1 0 2 144 442 1 3 632 521 2 0 240 135 3 0 330 318
-Wrote to player 2: 2 0 2 144 442 1 3 632 521 2 0 240 135 3 0 330 318
-Wrote to player 0: 0 0 2 144 442 1 3 632 521 2 0 240 135 3 0 330 318
-Wrote to player 3: 3 0 2 144 442 1 3 632 521 2 0 240 135 3 0 330 318
-Wrote to player 1: 1 0 2 144 442 1 3 632 521 2 0 240 135 3 0 330 318
-...
-```
-
----
-
-# Server update string
-```c
-Wrote to player 3: 2 0 4 144 442 1 5 632 521 2 2 240 135 3 1 330 318
-Wrote to player 3: your_id (player_id player_avatar player_x player_y)+
-```
-* your_id: `3`
-* player 0: `4 144 442`
-* player 1: `5 632 521`
-* player 2: `2 240 135`
-* player 3: `1 330 318`
-
