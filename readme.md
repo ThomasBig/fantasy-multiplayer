@@ -7,7 +7,7 @@
 
 ![](game.png)
 
-## Client executable
+## Client Executable
 Game client which renders graphics in a window, handles key presses and handles networking in the background. Also shows a yellow border around
 your character.
 
@@ -22,7 +22,7 @@ Keyboard keys:
 * **D** - move right
 * **C** - change avatar
 
-## Server executable
+## Server Executable
 Headless server which updates connected clients with their location and avatar info.
 
 Usage: `server.exe port`
@@ -31,10 +31,10 @@ Usage: `server.exe port`
 ## Recommended Programs
 **Visual Studio 2020 C++ compiler**: to compile C++20 code\
 **Git**: to download ASIO library and versioning\
-**VS Code**: to write code\
-*C/C++ Extension*: IntelliSense, Debugging\
-*CMake Extension*: Syntax for CMake files\
-*CMake Tools Extension*: Buttons for easier compilation
+**VS Code**: to write code
+* *C/C++ Extension*: IntelliSense, Debugging\
+* *CMake Extension*: Syntax for CMake files\
+* *CMake Tools Extension*: Buttons for easier compilation
 
 ## Installation
 1. Install recommended programs
