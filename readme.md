@@ -1,9 +1,9 @@
 # Fantasy Multiplayer
-*Simple Online Multiplayer Game*
+*Simple Online Multiplayer Game, made with ASIO, SDL3 and C++.*
 
 **Author:** Tomáš Janoušek
 
-**Purpose:** Shows how to make a simple multiplayer game using ASIO, C++20 and SDL3.
+**Motivation:** Multiplayer games do not have to be made using game engines.
 
 ![](game.png)
 
@@ -47,18 +47,18 @@ Usage: `server.exe port`
 ```
 Code:
     Fantasy Multiplayer
-    Created by Tomas Janousek
+    Author: Tomas Janousek
     Creation Date: 06-04-2025
     License: MIT License
 
 Sprites:
     Tiny Dungeon (1.0)
-    Created/distributed by Kenney (www.kenney.nl)
+    Author: Kenney (www.kenney.nl)
     Creation date: 05-07-2022
     License: (Creative Commons Zero, CC0)
 
     Adventure Awaits Asset Pack (1.0)
-    Created/distributed by Ishtar Pixels
+    Author: Ishtar Pixels
     Creation date: 20-10-2023
     License: (Creative Commons Zero, CC0)
 ```
