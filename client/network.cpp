@@ -26,16 +26,20 @@ asio::awaitable<void> Network::read_from_server() {
   while (true) {
     auto [ec, len] = co_await client_socket.async_receive(
       asio::buffer(data, 1024), asio::as_tuple);
+    if (ec) {
+      std::cout << "Could not read the message: " << ec.message() << "\n";
+      co_return;
+    }
     std::string received(data, len);
     deserialize(received);
   }
 }
 
 asio::awaitable<void> Network::connect_to_endpoints(const tcp::resolver::results_type endpoints) {
-  auto [error_code, endpoint] = co_await asio::async_connect(
+  auto [ec, _endpoint] = co_await asio::async_connect(
     client_socket, endpoints, asio::as_tuple);
-  if (error_code) {
-    std::cout << "Could not connect: " << error_code.message() << "\n";
+  if (ec) {
+    std::cout << "Could not connect: " << ec.message() << "\n";
     co_return;
   }
   co_await (write_to_server() || read_from_server());
@@ -54,6 +58,7 @@ void Network::connect_to_server(const char* server_address, const char* server_p
 
 SDL_AppResult Network::receive_updates() {
   if (should_exit) {
+    // returns success as we handled all errors manually
     return SDL_APP_SUCCESS;
   }
   context.poll();
