@@ -42,6 +42,7 @@ asio::awaitable<void> Network::connect_to_endpoints(const tcp::resolver::results
     std::cout << "Could not connect: " << ec.message() << "\n";
     co_return;
   }
+  // we will run both coroutines simultaneously and wait until any of them ends
   co_await (write_to_server() || read_from_server());
   should_exit = true;
 }
