@@ -5,6 +5,8 @@
 
 **Motivation:** Multiplayer games do not have to be made using game engines.
 
+**Slides**: [Game Access 2025](https://drive.google.com/drive/folders/1QZVrgly9u_q8XgVfXL-ECki9_fu96Z1o?usp=drive_link)
+
 ![](game.png)
 
 ## Client Executable
